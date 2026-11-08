@@ -23,14 +23,18 @@ button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } bu
 #estados .acc { background:var(--terra); color:#fff; border-color:var(--terra); }
 /* E9d (Pipe, 8-nov: «mucho mas pequeña y en vertical [...] que este oculta por defecto y mas bien uno la llama»): panel angosto, norte arriba, se abre con el boton */
 #b-planta { position:fixed; right:10px; top:10px; box-shadow:0 2px 12px rgba(0,0,0,.18); }
-#plano { position:fixed; right:10px; top:48px; border-radius:10px; padding:4px; background:#fff; }
+/* E9f (Pipe, 8-nov: «no tenga fodo blanco si no fondo transparente»): sin caja; el panorama se sigue arrastrando a traves de la planta, y solo los puntos reciben el clic */
+#plano { position:fixed; right:10px; top:48px; padding:4px; background:transparent; border:none; box-shadow:none; pointer-events:none; }
+.ppt { pointer-events:auto; }
+.pl-marca { filter:drop-shadow(0 0 .7px #fff) drop-shadow(0 0 .7px #fff); }
+.ppt .d, #cono { filter:drop-shadow(0 0 1px rgba(0,0,0,.65)); }
 #splano { display:block; }
-#splano text.n { font:600 8.5px/1 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; fill:#5F5A53; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+#splano text.n { font:600 8.5px/1 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; fill:#26231F; text-anchor:middle; dominant-baseline:central; paint-order:stroke; stroke:#fff; stroke-width:2px; stroke-linejoin:round; pointer-events:none; }
 .ppt { cursor:pointer; outline:none; } .ppt .h { fill:transparent; }
 .ppt .d { fill:#fff; stroke:#26231F; stroke-width:1.2px; transition:r .12s; }
 .ppt:hover .d, .ppt:focus-visible .d { fill:#26231F; }
 .ppt.on .d { fill:var(--terra); stroke:#fff; stroke-width:1.4px; }
-#cono { fill:rgba(154,90,46,.26); stroke:var(--terra); stroke-width:.8px; stroke-linejoin:round; pointer-events:none; }
+#cono { fill:rgba(154,90,46,.62); stroke:#fff; stroke-width:1px; stroke-linejoin:round; pointer-events:none; }
 #pl-nom { position:fixed; display:none; transform:translate(-100%, -50%); font-size:11.5px; line-height:1.5; color:#fff; background:rgba(30,28,26,.82); padding:0 8px; border-radius:8px; white-space:nowrap; pointer-events:none; }
 /* E9b (Pipe, 8-nov: «Prefiero que se vean miniaturas en circulos en la parte inferior»): fila sobre la barra de estados; el nombre, al pasar el cursor (arriba) y bajo el activo */
 #mini { position:fixed; left:0; right:0; bottom:58px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; pointer-events:none; }
@@ -228,19 +232,19 @@ function marcarMini(c) { for (const [k, b] of MINI) b.classList.toggle('on', k =
 // Un rumbo de planta se pasa a angulo de pantalla restando 90 (0 = norte = arriba, 90 = este = derecha). Los puntos fuera de la casa van al margen oeste, con una flecha hacia donde estan.
 const svgNS = 'http://www.w3.org/2000/svg', KP = 9;            // px de pantalla por metro, en el tamano maximo
 const nodo = (tag, at = {}, padre) => { const e = document.createElementNS(svgNS, tag); for (const k in at) e.setAttribute(k, at[k]); if (padre) padre.appendChild(e); return e; };
-const sv = $('#splano'), plano = $('#plano'), bPl = $('#b-planta'), plNom = $('#pl-nom'); const dibPl = await fetch('planta360/planta360_v3o_vertical.json').then(r => r.json());
+const sv = $('#splano'), plano = $('#plano'), bPl = $('#b-planta'), plNom = $('#pl-nom'); const dibPl = await fetch('planta360/planta360_v3o_vertical_transp_halo.json').then(r => r.json());
 const pV = dibPl.ventana, pX0 = pV.x0 - dibPl.margen_oeste_m + 0.4;   // el margen se mide desde el muro; la imagen ya trae 0,40 m por fuera
 const aPx = (x, y) => [(x - pX0) * KP, (pV.y1 - y) * KP];
 const pW = Math.round((pV.x1 - pX0) * KP), pH = Math.round((pV.y1 - pV.y0) * KP);
 sv.setAttribute('viewBox', `0 0 ${pW} ${pH}`);
 { const [ix, iy] = aPx(pV.x0, pV.y1); nodo('image', { href: 'planta360/' + dibPl.archivo, x: ix, y: iy, width: (pV.x1 - pV.x0) * KP, height: pH, preserveAspectRatio: 'none' }, sv); }
 const cono = nodo('path', { id: 'cono' }, sv);
-nodo('path', { d: 'M8 24v-9m-2.6 2.6l2.6 -2.6l2.6 2.6', fill: 'none', stroke: '#5F5A53', 'stroke-width': 1, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, sv); nodo('text', { x: 8, y: 8, class: 'n' }, sv).textContent = 'N';
+nodo('path', { class: 'pl-marca', d: 'M8 24v-9m-2.6 2.6l2.6 -2.6l2.6 2.6', fill: 'none', stroke: '#26231F', 'stroke-width': 1, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, sv); nodo('text', { x: 8, y: 8, class: 'n' }, sv).textContent = 'N';
 const PT_PL = new Map();
 function nombrePl(g, texto) { const r = g.querySelector('.d').getBoundingClientRect(); plNom.textContent = texto; plNom.style.left = (r.left - 8) + 'px'; plNom.style.top = (r.top + r.height / 2) + 'px'; plNom.style.display = 'block'; }
 for (const q of PUNTOS) { const ex = dibPl.fuera[q.clave], [x, y] = ex ? aPx(ex.pin[0], ex.pin[1]) : aPx(q.pos[0], q.pos[1]), texto = q.nombre + (ex ? ` · a ${ex.metros} m` : '');
   if (ex) { const a = Math.atan2(-(ex.real[1] - ex.pin[1]), ex.real[0] - ex.pin[0]), ux = Math.cos(a), uy = Math.sin(a), f = (t, g) => { const c = a + g; return `${(x + ux * t + Math.cos(c) * 3).toFixed(1)} ${(y + uy * t + Math.sin(c) * 3).toFixed(1)}`; };
-    nodo('path', { d: `M${(x + ux * 5).toFixed(1)} ${(y + uy * 5).toFixed(1)}L${(x + ux * 9).toFixed(1)} ${(y + uy * 9).toFixed(1)}M${f(9, Math.PI * .75)}L${(x + ux * 9).toFixed(1)} ${(y + uy * 9).toFixed(1)}L${f(9, -Math.PI * .75)}`, fill: 'none', stroke: '#5F5A53', 'stroke-width': 1, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, sv); }
+    nodo('path', { d: `M${(x + ux * 5).toFixed(1)} ${(y + uy * 5).toFixed(1)}L${(x + ux * 9).toFixed(1)} ${(y + uy * 9).toFixed(1)}M${f(9, Math.PI * .75)}L${(x + ux * 9).toFixed(1)} ${(y + uy * 9).toFixed(1)}L${f(9, -Math.PI * .75)}`, class: 'pl-marca', fill: 'none', stroke: '#26231F', 'stroke-width': 1, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, sv); }
   const g = nodo('g', { class: 'ppt', 'data-c': q.clave, tabindex: 0, role: 'button', 'aria-label': 'Ir a ' + q.nombre }, sv);
   nodo('circle', { class: 'h', cx: x, cy: y, r: 9 }, g); nodo('circle', { class: 'd', cx: x, cy: y, r: 3.2 }, g);
   g.addEventListener('click', () => ponerPunto(q.clave)); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ponerPunto(q.clave); } });
