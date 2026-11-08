@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Casa Wuehrer · 360</title>
 <!-- Visor VIRTU v1, etapa E3 (PRB-0002, 7-nov-2026): recorrido 360. Lee tour360.json (lo escribe fichas/interactivo/visor_virtu_v1/preparar_360.py).
@@ -21,19 +21,17 @@ button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } bu
 #estados { position:fixed; left:10px; right:10px; bottom:14px; width:fit-content; margin:0 auto; display:flex; gap:6px; align-items:center; border-radius:28px; padding:6px 8px; flex-wrap:wrap; justify-content:center; max-width:calc(100% - 20px); }
 #estados .et { font-size:11px; color:var(--gris); margin:0 2px 0 6px; } #estados .sep { width:1px; height:22px; background:var(--linea); }
 #estados .acc { background:var(--terra); color:#fff; border-color:var(--terra); }
-/* E9: planta del panel. Medidas fijas en pixeles para que los nombres se lean igual en cualquier pantalla: si no cabe, se desliza de lado */
-#plano { position:fixed; right:10px; top:10px; border-radius:12px; padding:5px 6px; background:#fff; max-width:calc(100% - 20px); }
-#pl-marco { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
-#pl-marco::-webkit-scrollbar { display:none; }
+/* E9d (Pipe, 8-nov: «mucho mas pequeña y en vertical [...] que este oculta por defecto y mas bien uno la llama»): panel angosto, norte arriba, se abre con el boton */
+#b-planta { position:fixed; right:10px; top:10px; box-shadow:0 2px 12px rgba(0,0,0,.18); }
+#plano { position:fixed; right:10px; top:48px; border-radius:10px; padding:4px; background:#fff; }
 #splano { display:block; }
-#splano text { font:500 9.5px/1 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; fill:#26231F; text-anchor:middle; dominant-baseline:central; paint-order:stroke; stroke:#fff; stroke-width:2.6px; stroke-linejoin:round; pointer-events:none; }
-#splano text.ext { font-size:10px; text-anchor:start; fill:#3F3B36; }
-#splano .n { font-size:9px; font-weight:600; fill:#5F5A53; }
+#splano text.n { font:600 8.5px/1 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; fill:#5F5A53; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
 .ppt { cursor:pointer; outline:none; } .ppt .h { fill:transparent; }
-.ppt .d { fill:#fff; stroke:#26231F; stroke-width:1.5px; transition:r .12s; }
+.ppt .d { fill:#fff; stroke:#26231F; stroke-width:1.2px; transition:r .12s; }
 .ppt:hover .d, .ppt:focus-visible .d { fill:#26231F; }
-.ppt.on .d { fill:var(--terra); stroke:#fff; stroke-width:1.8px; }
-#cono { fill:rgba(154,90,46,.26); stroke:var(--terra); stroke-width:1px; stroke-linejoin:round; pointer-events:none; }
+.ppt.on .d { fill:var(--terra); stroke:#fff; stroke-width:1.4px; }
+#cono { fill:rgba(154,90,46,.26); stroke:var(--terra); stroke-width:.8px; stroke-linejoin:round; pointer-events:none; }
+#pl-nom { position:fixed; display:none; transform:translate(-100%, -50%); font-size:11.5px; line-height:1.5; color:#fff; background:rgba(30,28,26,.82); padding:0 8px; border-radius:8px; white-space:nowrap; pointer-events:none; }
 /* E9b (Pipe, 8-nov: «Prefiero que se vean miniaturas en circulos en la parte inferior»): fila sobre la barra de estados; el nombre, al pasar el cursor (arriba) y bajo el activo */
 #mini { position:fixed; left:0; right:0; bottom:58px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; pointer-events:none; }
 #mini::-webkit-scrollbar { display:none; }
@@ -45,7 +43,7 @@ button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } bu
 .mn.on .nom { display:block; top:calc(100% + 6px); bottom:auto; background:var(--terra); }
 .mn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
 @media (hover:hover) { .mn:hover { transform:scale(1.07); } .mn:hover .nom { display:block; } }
-@media (min-width:761px) and (max-width:1199px) { #cab { max-width:calc(100% - 660px); } #cab .nota { display:none; } }
+@media (min-width:761px) and (max-width:1199px) { #cab { max-width:min(520px, calc(100% - 150px)); } #cab .nota { display:none; } }
 #etiquetas { position:fixed; inset:0; pointer-events:none; }
 .salto { position:absolute; transform:translate(-50%, -50%); pointer-events:auto; cursor:pointer; text-align:center; }
 .salto .anillo { width:34px; height:34px; border-radius:50%; border:3px solid #fff; background:rgba(154,90,46,.55); box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.35); margin:0 auto; transition:transform .15s; }
@@ -54,19 +52,19 @@ button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } bu
 #carga { position:fixed; inset:0; display:grid; place-items:center; color:#ddd; background:#111; font-size:13px; }
 #fundido { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .25s; }
 @media (max-width:760px) {
-  #plano { left:8px; right:8px; top:48px; padding:4px; max-width:none; }
-  #cab { top:8px; left:8px; max-width:calc(100% - 16px); padding:6px 10px; } #cab b { font-size:13px; }
+  #b-planta { right:8px; top:8px; font-size:12px; padding:5px 10px; } #plano { right:8px; top:44px; }
+  #cab { top:8px; left:8px; max-width:calc(100% - 136px); padding:6px 10px; } #cab b { font-size:13px; }
   #cab .nota { display:none; }
   #estados { left:4px; right:4px; max-width:none; bottom:8px; gap:4px; padding:5px 6px; } #estados .et, #estados .sep, #estados .solo-escritorio { display:none; }
   #estados button { padding:5px 10px; font-size:12px; }
   #mini { bottom:40px; } #mini-fila { gap:14px; padding:26px 90px 23px; } .mn, .mn.on { width:52px; height:52px; } .mn .nom { font-size:11px; }
   .salto .anillo { width:28px; height:28px; } .salto span { font-size:10.5px; }
 }
-@media (min-width:761px) and (max-height:440px) {     /* celular acostado: no cabe la planta; se navega por los circulos */
-  #plano, #cab .nota, #estados .et, #estados .sep, #estados .solo-escritorio { display:none; }
+@media (min-width:761px) and (max-height:440px) {     /* celular acostado: la planta sigue disponible con su boton, mas chica */
+  #cab .nota, #estados .et, #estados .sep, #estados .solo-escritorio { display:none; }
   #estados { bottom:8px; gap:4px; padding:5px 6px; } #estados button { padding:5px 10px; font-size:12px; }
   #mini { bottom:40px; } #mini-fila { gap:14px; padding:26px 90px 23px; } .mn, .mn.on { width:52px; height:52px; } .mn .nom { font-size:11px; }
-  #cab { padding:6px 10px; max-width:calc(100% - 20px); }
+  #cab { padding:6px 10px; max-width:calc(100% - 150px); }
 }
 </style>
 </head>
@@ -76,7 +74,9 @@ button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } bu
 <div id="fundido"></div>
 <div id="cab" class="caja"><b id="t-nombre">—</b><div class="nota" id="t-nota"></div></div>
 <div id="mini"><div id="mini-fila"></div></div>
-<div id="plano" class="caja"><div id="pl-marco"><svg id="splano" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Planta de la casa con los puntos del recorrido"></svg></div></div>
+<button id="b-planta" aria-controls="plano" aria-expanded="false">Planta</button>
+<div id="plano" class="caja" hidden><svg id="splano" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Planta de la casa con los puntos del recorrido"></svg></div>
+<div id="pl-nom"></div>
 <div id="estados" class="caja">
   <span class="et">Hora</span><button data-k="hora" data-v="dia">Día</button><button data-k="hora" data-v="noche">Noche</button>
   <span class="sep"></span>
@@ -224,36 +224,45 @@ mini.addEventListener('wheel', e => { if (mini.scrollWidth > mini.clientWidth) {
 function marcarMini(c) { for (const [k, b] of MINI) b.classList.toggle('on', k === c); const b = MINI.get(c); mini.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - mini.clientWidth / 2, behavior: 'smooth' }); }
 
 // ---------------------------------------------------------------- planta (E9, Pipe 8-nov: «sencilla, no tiene tanto color, tiene el mobiliario y se puede distinguir cada espacio»)
-// La imagen sale de las mallas del central (preparar_planta360.py). Norte a la derecha y oeste arriba, como G-02: asi la casa, larga, llena el panel.
-// Un rumbo de planta es directamente el angulo en pantalla (0 = norte = derecha, 90 = este = abajo). Los puntos fuera de la casa van al margen oeste, con su distancia real escrita.
-const svgNS = 'http://www.w3.org/2000/svg', KP = 17;           // px de pantalla por metro
+// E9d: la imagen vertical sale de las mismas mallas (preparar_planta360_vertical.py). Norte arriba y oeste a la izquierda. Sin nombres de recinto: a este tamano no caben; el nombre del punto sale al pasar el cursor.
+// Un rumbo de planta se pasa a angulo de pantalla restando 90 (0 = norte = arriba, 90 = este = derecha). Los puntos fuera de la casa van al margen oeste, con una flecha hacia donde estan.
+const svgNS = 'http://www.w3.org/2000/svg', KP = 9;            // px de pantalla por metro, en el tamano maximo
 const nodo = (tag, at = {}, padre) => { const e = document.createElementNS(svgNS, tag); for (const k in at) e.setAttribute(k, at[k]); if (padre) padre.appendChild(e); return e; };
-const sv = $('#splano'), marco = $('#pl-marco'); const dibPl = await fetch('planta360/planta360_v3o.json').then(r => r.json());
+const sv = $('#splano'), plano = $('#plano'), bPl = $('#b-planta'), plNom = $('#pl-nom'); const dibPl = await fetch('planta360/planta360_v3o_vertical.json').then(r => r.json());
 const pV = dibPl.ventana, pX0 = pV.x0 - dibPl.margen_oeste_m + 0.4;   // el margen se mide desde el muro; la imagen ya trae 0,40 m por fuera
-const aPx = (x, y) => [(y - pV.y0) * KP, (x - pX0) * KP];
-const pW = Math.round((pV.y1 - pV.y0) * KP), pH = Math.round((pV.x1 - pX0) * KP);
-sv.setAttribute('viewBox', `0 0 ${pW} ${pH}`); sv.setAttribute('width', pW); sv.setAttribute('height', pH);
-{ const [ix, iy] = aPx(pV.x0, pV.y0); nodo('image', { href: 'planta360/' + dibPl.archivo, x: ix, y: iy, width: pW, height: (pV.x1 - pV.x0) * KP, preserveAspectRatio: 'none' }, sv); }
+const aPx = (x, y) => [(x - pX0) * KP, (pV.y1 - y) * KP];
+const pW = Math.round((pV.x1 - pX0) * KP), pH = Math.round((pV.y1 - pV.y0) * KP);
+sv.setAttribute('viewBox', `0 0 ${pW} ${pH}`);
+{ const [ix, iy] = aPx(pV.x0, pV.y1); nodo('image', { href: 'planta360/' + dibPl.archivo, x: ix, y: iy, width: (pV.x1 - pV.x0) * KP, height: pH, preserveAspectRatio: 'none' }, sv); }
 const cono = nodo('path', { id: 'cono' }, sv);
-for (const r of dibPl.rotulos) { const [x, y] = aPx(r.x, r.y);
-  const t = nodo('text', r.r ? { x, y, transform: `rotate(-90 ${x} ${y})` } : { x, y: r.t2 ? y - 6 : y }, sv); t.textContent = r.t; t.dataset.r = r.largo || r.t;
-  if (r.t2) { const t2 = nodo('text', { x, y: y + 6 }, sv); t2.textContent = r.t2; t2.dataset.r = r.t + ' ' + r.t2; } }
-{ const y = 11, x = pW - 26; nodo('path', { d: `M${x} ${y}h14m-4 -3.2l4 3.2l-4 3.2`, fill: 'none', stroke: '#5F5A53', 'stroke-width': 1.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, sv); const n = nodo('text', { x: x - 8, y, class: 'n' }, sv); n.textContent = 'N'; }
-const FLECHA = { piscina: '↖', pradera: '↑' }, NOMBRE_FUERA = { piscina: 'Piscina', pradera: 'Césped oeste' };
+nodo('path', { d: 'M8 24v-9m-2.6 2.6l2.6 -2.6l2.6 2.6', fill: 'none', stroke: '#5F5A53', 'stroke-width': 1, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, sv); nodo('text', { x: 8, y: 8, class: 'n' }, sv).textContent = 'N';
 const PT_PL = new Map();
-for (const q of PUNTOS) { const ex = dibPl.fuera[q.clave], [x, y] = ex ? aPx(ex.pin[0], ex.pin[1]) : aPx(q.pos[0], q.pos[1]);
-  if (ex) { const t = nodo('text', { x: x + 11, y, class: 'ext' }, sv); t.textContent = `${FLECHA[q.clave] || ''} ${NOMBRE_FUERA[q.clave] || q.nombre} · ${ex.metros} m`; t.dataset.r = q.nombre; }
+function nombrePl(g, texto) { const r = g.querySelector('.d').getBoundingClientRect(); plNom.textContent = texto; plNom.style.left = (r.left - 8) + 'px'; plNom.style.top = (r.top + r.height / 2) + 'px'; plNom.style.display = 'block'; }
+for (const q of PUNTOS) { const ex = dibPl.fuera[q.clave], [x, y] = ex ? aPx(ex.pin[0], ex.pin[1]) : aPx(q.pos[0], q.pos[1]), texto = q.nombre + (ex ? ` · a ${ex.metros} m` : '');
+  if (ex) { const a = Math.atan2(-(ex.real[1] - ex.pin[1]), ex.real[0] - ex.pin[0]), ux = Math.cos(a), uy = Math.sin(a), f = (t, g) => { const c = a + g; return `${(x + ux * t + Math.cos(c) * 3).toFixed(1)} ${(y + uy * t + Math.sin(c) * 3).toFixed(1)}`; };
+    nodo('path', { d: `M${(x + ux * 5).toFixed(1)} ${(y + uy * 5).toFixed(1)}L${(x + ux * 9).toFixed(1)} ${(y + uy * 9).toFixed(1)}M${f(9, Math.PI * .75)}L${(x + ux * 9).toFixed(1)} ${(y + uy * 9).toFixed(1)}L${f(9, -Math.PI * .75)}`, fill: 'none', stroke: '#5F5A53', 'stroke-width': 1, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, sv); }
   const g = nodo('g', { class: 'ppt', 'data-c': q.clave, tabindex: 0, role: 'button', 'aria-label': 'Ir a ' + q.nombre }, sv);
-  nodo('title', {}, g).textContent = q.nombre; nodo('circle', { class: 'h', cx: x, cy: y, r: 13 }, g); nodo('circle', { class: 'd', cx: x, cy: y, r: 4.3 }, g);
+  nodo('circle', { class: 'h', cx: x, cy: y, r: 9 }, g); nodo('circle', { class: 'd', cx: x, cy: y, r: 3.2 }, g);
   g.addEventListener('click', () => ponerPunto(q.clave)); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ponerPunto(q.clave); } });
+  g.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') nombrePl(g, texto); }); g.addEventListener('pointerleave', () => { plNom.style.display = 'none'; });
+  g.addEventListener('focus', () => { if (g.matches(':focus-visible')) nombrePl(g, texto); }); g.addEventListener('blur', () => { plNom.style.display = 'none'; });
   PT_PL.set(q.clave, { g, x, y }); }
-function marcarPlano() { for (const [c, o] of PT_PL) { const on = c === est.punto.clave; o.g.classList.toggle('on', on); o.g.querySelector('.d').setAttribute('r', on ? 6 : 4.3); if (on) { sv.appendChild(o.g); marco.scrollTo({ left: o.x - marco.clientWidth / 2, behavior: 'smooth' }); } } dibujarPlano(); }
+function marcarPlano() { for (const [c, o] of PT_PL) { const on = c === est.punto.clave; o.g.classList.toggle('on', on); o.g.querySelector('.d').setAttribute('r', on ? 4.6 : 3.2); if (on) sv.appendChild(o.g); } dibujarPlano(); }
+function ajustarPlano() {                                      // cabe sobre los circulos; si la ventana es muy baja, llega hasta la barra
+  if (plano.hidden) return;
+  const top = plano.getBoundingClientRect().top, barra = $('#estados').getBoundingClientRect().top; let libre = MINI.values().next().value.getBoundingClientRect().top - 16 - top - 10;
+  if (libre < 230) libre = barra - 8 - top - 10;
+  const k = Math.min(1, libre / pH); sv.style.width = (pW * k).toFixed(1) + 'px'; sv.style.height = (pH * k).toFixed(1) + 'px';
+}
+function verPlano(si) { plano.hidden = !si; plNom.style.display = 'none'; bPl.textContent = si ? 'Ocultar planta' : 'Planta'; bPl.classList.toggle('on', si); bPl.setAttribute('aria-expanded', si); ajustarPlano(); }
+bPl.onclick = () => verPlano(plano.hidden);
+new ResizeObserver(ajustarPlano).observe($('#estados')); addEventListener('resize', ajustarPlano);
 let clavePl = '';
 function dibujarPlano() {                                      // solo el cono cambia con la vista; no se redibuja lo demas
   if (!est.punto) return;
   const o = PT_PL.get(est.punto.clave), ab = Math.min(150, 2 * THREE.MathUtils.radToDeg(Math.atan(Math.tan(THREE.MathUtils.degToRad(fov / 2)) * innerWidth / innerHeight))), az = rumbo();
   const k = `${est.punto.clave}|${az.toFixed(1)}|${ab.toFixed(1)}`; if (k === clavePl) return; clavePl = k;
-  const R = dibPl.fuera[est.punto.clave] ? 13 : 36, p = g => [o.x + R * Math.cos(THREE.MathUtils.degToRad(g)), o.y + R * Math.sin(THREE.MathUtils.degToRad(g))], a = p(az - ab / 2), b = p(az + ab / 2);
+  const R = dibPl.fuera[est.punto.clave] ? 9 : 20, p = g => [o.x + R * Math.cos(THREE.MathUtils.degToRad(g - 90)), o.y + R * Math.sin(THREE.MathUtils.degToRad(g - 90))], a = p(az - ab / 2), b = p(az + ab / 2);
   cono.setAttribute('d', `M${o.x.toFixed(1)} ${o.y.toFixed(1)}L${a[0].toFixed(1)} ${a[1].toFixed(1)}A${R} ${R} 0 ${ab > 180 ? 1 : 0} 1 ${b[0].toFixed(1)} ${b[1].toFixed(1)}Z`);
   T3.plano = { az: +az.toFixed(1), abertura: +ab.toFixed(1) };
 }

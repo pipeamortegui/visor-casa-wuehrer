@@ -1,0 +1,50 @@
+{
+ "version": 2,
+ "orientacion": "norte arriba, oeste a la izquierda",
+ "central": "PRB-0002_v3o",
+ "origen": "binario del central PRB-0002_v3o",
+ "extraido": "2026-11-08 09:18",
+ "persiana": "recogida",
+ "z_corte_m": 1.2,
+ "png_md5": "75f469aaaa8411dbb12b375a92b8650c",
+ "archivo": "planta360_v3o_vertical.png",
+ "ancho_px": 266,
+ "alto_px": 1140,
+ "ppm": 31.4922,
+ "ventana": {
+  "x0": -0.4,
+  "x1": 8.05,
+  "y0": -0.55,
+  "y1": 35.65
+ },
+ "margen_oeste_m": 1.9,
+ "fuera": {
+  "piscina": {
+   "pin": [
+    -0.75,
+    0.65
+   ],
+   "metros": 8,
+   "real": [
+    -2.5,
+    -7.5
+   ]
+  },
+  "pradera": {
+   "pin": [
+    -0.75,
+    12.7
+   ],
+   "metros": 9,
+   "real": [
+    -9.0,
+    12.7
+   ]
+  }
+ },
+ "controles": {
+  "ppm": 31.4921875,
+  "area_muro_m2": 11.62,
+  "lineas_mueble_m2": 17.1
+ }
+}
