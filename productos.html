@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor VIRTÙ · Productos</title>
+<!-- Visor VIRTU v1, etapa E5 (PRB-0002, 7-nov-2026): catalogo de productos de las redes. Lee, en su carpeta y sin copiarlos, el catalogo de RT2
+     (fichas/redes_rt2/salida/catalogo_productos_rt2.json) y su modelo de datos (fichas/redes_rt2/redes_rt2_modelo_v1.json) para decir cuanto se usa
+     de cada producto y donde. "Ver en 3D" resalta sus piezas en el modulo 3D. -->
+<style>
+:root { --papel:#F2EDE5; --papel2:#E9E2D7; --tinta:#1E1C1A; --gris:#7D776F; --linea:#D6CDBF; --terra:#9A5A2E; }
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; background:var(--papel); color:var(--tinta); font:13px/1.4 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+body { display:flex; flex-direction:column; overflow:hidden; }
+button, input { font:inherit; }
+button { border:1px solid var(--linea); background:#fff; color:var(--tinta); border-radius:16px; padding:4px 11px; cursor:pointer; white-space:nowrap; }
+button:hover { border-color:var(--gris); } button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); }
+a { color:var(--terra); text-decoration:none; font-weight:600; }
+#barra { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid var(--linea); }
+#barra h1 { font-size:15px; margin:0 10px 0 0; }
+.chips { display:flex; gap:4px; flex-wrap:wrap; }
+.pt { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:5px; vertical-align:middle; }
+#buscar { border:1px solid var(--linea); border-radius:16px; padding:5px 12px; min-width:200px; background:#fff; }
+#cuenta { color:var(--gris); font-size:12px; margin-left:auto; }
+#aviso { font-size:11.5px; color:var(--gris); padding:6px 14px; border-bottom:1px solid var(--linea); background:#F6F1EA; }
+#cuerpo { flex:1; display:flex; min-height:0; }
+#rejilla { flex:1; overflow:auto; padding:14px; display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px; align-content:start; }
+.grupo { grid-column:1 / -1; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--terra); font-weight:700; margin:8px 0 0; }
+.tarjeta { background:#fff; border:1px solid var(--linea); border-radius:10px; padding:10px 12px; cursor:pointer; display:flex; flex-direction:column; gap:3px; }
+.tarjeta:hover { border-color:var(--gris); } .tarjeta.on { border-color:var(--terra); box-shadow:0 0 0 2px rgba(154,90,46,.25); }
+.tarjeta .tipo { font-size:10.5px; color:var(--gris); text-transform:uppercase; letter-spacing:.05em; }
+.tarjeta .marca { font-size:12px; color:var(--gris); } .tarjeta .modelo { font-weight:650; font-size:13.5px; line-height:1.25; }
+.tarjeta .uso { font-size:12px; margin-top:4px; } .tarjeta .pie { display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+.est { font-size:10.5px; border-radius:8px; padding:1px 7px; background:var(--papel2); color:var(--gris); }
+.est.prop { background:#F3E2D1; color:var(--terra); } .est.ret { background:#F2D7D2; color:#9b2f22; }
+#detalle { width:360px; border-left:1px solid var(--linea); overflow:auto; padding:14px 16px; display:none; background:var(--papel); }
+#detalle.on { display:block; }
+#detalle h2 { font-size:18px; margin:4px 0 2px; } #detalle .marca { color:var(--gris); }
+#detalle table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
+#detalle td { overflow-wrap:anywhere; padding:4px 0; border-bottom:1px solid var(--linea); vertical-align:top; } #detalle td:first-child { color:var(--gris); width:110px; }
+#detalle .acc { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+#detalle .acc button.prim { background:var(--terra); color:#fff; border-color:var(--terra); }
+#cerrar { float:right; border:0; background:none; font-size:20px; color:var(--gris); padding:0 4px; }
+@media (max-width:760px) {
+  #barra h1 { display:none; } #buscar { min-width:0; flex:1; } #cuenta { display:none; }
+  #rejilla { grid-template-columns:1fr 1fr; padding:10px; gap:8px; }
+  #detalle { position:fixed; inset:auto 0 0 0; width:auto; max-height:70%; border-left:0; border-top:1px solid var(--linea); box-shadow:0 -6px 20px rgba(0,0,0,.12); border-radius:14px 14px 0 0; }
+}
+</style>
+</head>
+<body>
+<div id="barra">
+  <h1>Productos</h1>
+  <div class="chips" id="f-sis"></div>
+  <div class="chips" id="f-est"></div>
+  <input id="buscar" type="search" placeholder="Buscar marca, modelo, SKU…">
+  <span id="cuenta"></span>
+</div>
+<div id="aviso"></div>
+<div id="cuerpo"><div id="rejilla"></div><aside id="detalle"></aside></div>
+<script>
+const $ = s => document.querySelector(s);
+const CAT_URL = 'datos/catalogo_productos_rt2.json', MOD_URL = 'datos/redes_rt2_modelo_v1.json';
+const SIS = { CAL: ['Calefacción', '#e4572e'], AIR: ['Aire acondicionado', '#2e86de'], ELE: ['Eléctrica', '#f2c14e'], PLO: ['Plomería', '#17a398'], GAS: ['Gas', '#9b5de5'] };
+const EST = { todos: 'Todos', dato: 'Con dato', prop: 'Propuesta' };
+const PR = window.PR = { listo: false };
+let cat, uso = {}, fSis = 'todos', fEst = 'todos', sel = null;
+const esProp = p => /PROPUESTA/i.test(p.estado || '');
+const etiqueta = e => ({ 'DATO-FABRICANTE': 'dato del fabricante', 'PROPUESTA': 'propuesta RT2', 'FOTO': 'leído en foto' })[e] || (e || '').replace('DATO ', 'dato ');
+const fmt = n => n.toLocaleString('es', { maximumFractionDigits: 1 });
+function avisarPadre(m) { if (parent !== window) parent.postMessage(m, location.origin); }
+
+function calcularUso(m) {
+  const u = id => (uso[id] = uso[id] || { metros: 0, tramos: 0, accesorios: 0, equipos: [], puntos: 0, subs: new Set(), dibujado: 0 });
+  for (const t of m.tramos) { const x = u(t.producto); x.metros += t.largo_m || 0; x.tramos++; x.subs.add(t.subsistema); if (t.fisico !== false) x.dibujado++; }
+  for (const c of m.campo_radiante) { const x = u(c.producto); x.metros += c.largo_m || 0; x.subs.add(c.subsistema); x.dibujado++; }
+  for (const a of m.accesorios) { const x = u(a.producto); x.accesorios++; x.subs.add(a.subsistema); x.dibujado++; }
+  for (const e of m.equipos) { const x = u(e.producto); x.equipos.push(e); x.subs.add(e.subsistema); x.dibujado++; }
+  for (const t of m.terminales) { const x = u(t.producto); x.puntos++; x.subs.add(t.subsistema); if (t.pos) x.dibujado++; }
+  PR.subs = Object.fromEntries(m.subsistemas.map(s => [s.id, s.nombre]));
+}
+function textoUso(id) {
+  const x = uso[id]; if (!x) return 'aún no está en el modelo de redes (opción o pendiente)';
+  const p = [];
+  if (x.metros) p.push(fmt(x.metros) + ' m');
+  if (x.equipos.length) p.push(x.equipos.length + (x.equipos.length === 1 ? ' equipo' : ' equipos'));
+  if (x.accesorios) p.push(x.accesorios + ' accesorios');
+  if (x.puntos) p.push(x.puntos + (x.puntos === 1 ? ' punto' : ' puntos'));
+  return p.join(' · ') || 'sin cantidades';
+}
+function filtrados() {
+  const q = $('#buscar').value.trim().toLowerCase();
+  return Object.entries(cat).filter(([id, p]) => (fSis === 'todos' || p.sistema === fSis) &&
+    (fEst === 'todos' || (fEst === 'prop') === esProp(p)) &&
+    (!q || [id, p.marca, p.modelo, p.sku, p.tipo].join(' ').toLowerCase().includes(q)));
+}
+function pintar() {
+  const lista = filtrados(); const r = $('#rejilla'); r.innerHTML = '';
+  const orden = Object.keys(SIS);
+  lista.sort((a, b) => orden.indexOf(a[1].sistema) - orden.indexOf(b[1].sistema) || (a[1].tipo || '').localeCompare(b[1].tipo || '') || (a[1].modelo || '').localeCompare(b[1].modelo || ''));
+  let g = null;
+  for (const [id, p] of lista) {
+    if (p.sistema !== g) { g = p.sistema; const h = document.createElement('div'); h.className = 'grupo'; h.innerHTML = `<span class="pt" style="background:${(SIS[g] || [])[1] || '#999'}"></span>${(SIS[g] || [g])[0]}`; r.appendChild(h); }
+    const d = document.createElement('div'); d.className = 'tarjeta' + (id === sel ? ' on' : ''); d.dataset.id = id;
+    d.innerHTML = `<div class="tipo">${p.tipo || ''} · ${id}</div><div class="marca">${p.marca || '—'}</div><div class="modelo">${p.modelo || '—'}</div>` +
+      `<div class="uso">${textoUso(id)}</div><div class="pie"><span class="est ${esProp(p) ? 'prop' : ''}">${etiqueta(p.estado)}</span>${p.retirado ? '<span class="est ret">retirado</span>' : ''}${p.ficha_url ? '<span class="est">ficha ↗</span>' : ''}</div>`;
+    d.onclick = () => abrir(id); r.appendChild(d);
+  }
+  $('#cuenta').textContent = `${lista.length} de ${Object.keys(cat).length} productos`;
+}
+function abrir(id, desdeFuera) {
+  const p = cat[id]; if (!p) return; sel = id;
+  document.querySelectorAll('.tarjeta').forEach(t => t.classList.toggle('on', t.dataset.id === id));
+  const t = document.querySelector(`.tarjeta[data-id="${CSS.escape(id)}"]`); if (t && desdeFuera) t.scrollIntoView({ block: 'center' });
+  const x = uso[id], med = p.medidas_mm ? Object.entries(p.medidas_mm).map(([k, v]) => `${k} ${v}`).join(' · ') + ' mm' : '—';
+  const filas = [['Sistema', (SIS[p.sistema] || [p.sistema])[0]], ['Tipo', p.tipo || '—'], ['SKU', p.sku || '—'], ['Medidas', med], ['Estado', etiqueta(p.estado)],
+    ['En la casa', textoUso(id)], ['Redes', x ? [...x.subs].map(s => PR.subs[s] || s).join(', ') : '—']];
+  if (x && x.equipos.length) filas.push(['Piezas', x.equipos.map(e => e.objeto_central || e.id).join('<br>')]);
+  if (x && x.equipos.some(e => e.no_cubre)) filas.push(['Ojo', x.equipos.filter(e => e.no_cubre).map(e => e.no_cubre).join('<br>')]);
+  if (p.retirado) filas.push(['Retirado', typeof p.retirado === 'string' ? p.retirado : 'sí']);
+  $('#detalle').innerHTML = `<button id="cerrar" title="Cerrar">×</button><div class="tipo" style="font-size:11px;color:var(--gris)">${id}</div>` +
+    `<h2>${p.modelo || '—'}</h2><div class="marca">${p.marca || ''}</div><table>${filas.map(f => `<tr><td>${f[0]}</td><td>${f[1]}</td></tr>`).join('')}</table>` +
+    `<div class="acc">${x && x.dibujado && parent !== window ? '<button class="prim" id="ver3d">Ver en 3D</button>' : ''}${p.ficha_url ? `<a href="${p.ficha_url}" target="_blank" rel="noopener"><button>Ficha del fabricante ↗</button></a>` : ''}</div>` +
+    `<p style="font-size:11px;color:var(--gris);margin-top:14px">Catálogo de RT2: productos reales de EE. UU. con su fuente; «propuesta» = elegido por cálculo y pendiente de que Pipe apruebe el diseño.</p>`;
+  $('#detalle').classList.add('on');
+  $('#cerrar').onclick = () => { $('#detalle').classList.remove('on'); sel = null; document.querySelectorAll('.tarjeta.on').forEach(t => t.classList.remove('on')); };
+  const v = $('#ver3d'); if (v) v.onclick = () => avisarPadre({ virtu: 'ir', modulo: '3d', resaltar: id });
+  history.replaceState(null, '', '#' + id); avisarPadre({ virtu: 'producto', id });
+}
+PR.abrir = abrir;
+addEventListener('message', ev => { if (ev.origin === location.origin && ev.data && ev.data.virtu === 'producto-abrir') { fSis = 'todos'; fEst = 'todos'; $('#buscar').value = ''; ponerFiltros(); pintar(); abrir(ev.data.id, true); } });
+function ponerFiltros() {
+  $('#f-sis').innerHTML = ''; $('#f-est').innerHTML = '';
+  for (const [k, n] of [['todos', 'Todos']].concat(Object.entries(SIS).map(([k, v]) => [k, v[0]]))) {
+    const b = document.createElement('button'); b.className = fSis === k ? 'on' : ''; b.innerHTML = (SIS[k] ? `<span class="pt" style="background:${SIS[k][1]}"></span>` : '') + n;
+    b.onclick = () => { fSis = k; ponerFiltros(); pintar(); }; $('#f-sis').appendChild(b); }
+  for (const [k, n] of Object.entries(EST)) { const b = document.createElement('button'); b.className = fEst === k ? 'on' : ''; b.textContent = n;
+    b.onclick = () => { fEst = k; ponerFiltros(); pintar(); }; $('#f-est').appendChild(b); }
+}
+$('#buscar').addEventListener('input', pintar);
+(async () => {
+  const [c, m] = await Promise.all([fetch(CAT_URL).then(r => r.json()), fetch(MOD_URL).then(r => r.json())]);
+  cat = c; calcularUso(m); PR.cat = cat; PR.uso = uso;
+  const nProp = Object.values(cat).filter(esProp).length;
+  $('#aviso').innerHTML = `Redes técnicas calculadas por RT2 (7-nov-2026, <b>propuesta</b>): ${Object.keys(cat).length} productos, ${nProp} elegidos por cálculo y pendientes de aprobación. Cada tarjeta dice cuánto se usa en la casa; «Ver en 3D» lo resalta en el modelo.`;
+  ponerFiltros(); pintar();
+  const id = decodeURIComponent(location.hash.replace('#', '')); if (id && cat[id]) abrir(id, true);
+  PR.listo = true;
+})();
+</script>
+</body>
+</html>

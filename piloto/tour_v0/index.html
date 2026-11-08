@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Casa Wuehrer 360</title>
+<style>
+  :root { --bg: #111; --fg: #eee; --mut: #9a9a9a; --btn: rgba(20,20,20,.72); --on: #e8c27a; --line: rgba(255,255,255,.18); }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 14px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #vista { position: fixed; inset: 0; touch-action: none; cursor: grab; }
+  #panel { position: fixed; left: 16px; top: 16px; right: 16px; max-width: 520px; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  #panel > * { pointer-events: auto; }
+  h1 { margin: 0; font-size: 16px; font-weight: 600; text-shadow: 0 1px 3px #000; }
+  .sub { color: var(--mut); font-size: 12px; text-shadow: 0 1px 3px #000; }
+  .grupo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .grupo b { font-weight: 500; color: var(--mut); font-size: 12px; min-width: 64px; text-shadow: 0 1px 3px #000; }
+  button { background: var(--btn); color: var(--fg); border: 1px solid var(--line); border-radius: 18px; padding: 6px 12px; font: inherit; cursor: pointer; backdrop-filter: blur(6px); }
+  button[aria-pressed="true"] { border-color: var(--on); color: var(--on); }
+  button:disabled { opacity: .4; cursor: default; }
+  #estado { position: fixed; left: 16px; bottom: 16px; right: 16px; color: var(--mut); font-size: 12px; text-shadow: 0 1px 3px #000; }
+  #carga { position: fixed; inset: 0; display: grid; place-items: center; color: var(--mut); }
+</style>
+</head>
+<body>
+<canvas id="vista"></canvas>
+<div id="carga">cargando…</div>
+<div id="panel">
+  <h1 id="titulo">Casa Wuehrer</h1>
+  <div class="sub" id="subtitulo"></div>
+  <div class="grupo"><b>Hora</b><button data-k="hora" data-v="dia">Día</button><button data-k="hora" data-v="noche">Noche</button></div>
+  <div class="grupo"><b>Luces</b><button data-k="luces" data-v="1">Encendidas</button><button data-k="luces" data-v="0">Apagadas</button></div>
+  <div class="grupo" id="geo"><b>Escena</b></div>
+</div>
+<div id="estado"></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const t0 = performance.now();
+const tour = await (await fetch('tour.json')).json();
+const punto = tour.puntos[0];
+document.getElementById('titulo').textContent = tour.titulo + ' · ' + punto.nombre;
+document.getElementById('subtitulo').textContent = tour.subtitulo;
+
+const lienzo = document.getElementById('vista');
+const ren = new THREE.WebGLRenderer({ canvas: lienzo, antialias: false, preserveDrawingBuffer: true });
+ren.setPixelRatio(Math.min(devicePixelRatio, 2));
+ren.outputColorSpace = THREE.LinearSRGBColorSpace;   // la mezcla y la gamma se hacen en el shader
+const escena = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(75, 1, 0.1, 10);
+const carg = new THREE.TextureLoader();
+const cache = {};
+function tex(ruta) {
+  if (!cache[ruta]) cache[ruta] = new Promise((ok, mal) => carg.load(ruta, t => {
+    t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter;
+    ok(t);
+  }, undefined, mal));
+  return cache[ruta];
+}
+
+// mezcla lineal de pases: cada pase se guarda como (x / escala)^(1/2.2) en JPG
+const PASES = ['sol', 'ent', 'int_d', 'int_n', 'si_int', 'si_ext', 'alfa', 'fijo'];
+const uni = { gamma: { value: 2.2 }, expo: { value: 1.0 }, cieloD: { value: null }, cieloN: { value: null },
+  offD: { value: 0 }, offN: { value: 0 }, signo: { value: 1 }, fijoOn: { value: 0 } };
+for (const p of PASES) { uni['t_' + p] = { value: null }; uni['s_' + p] = { value: 1 }; uni['k_' + p] = { value: new THREE.Vector3(0, 0, 0) }; }
+uni.kCieloD = { value: 0 }; uni.kCieloN = { value: 0 };
+const frag = `
+precision highp float;
+varying vec2 vUv;
+uniform float gamma, expo, offD, offN, signo, fijoOn, kCieloD, kCieloN;
+uniform sampler2D cieloD, cieloN;
+${PASES.map(p => `uniform sampler2D t_${p}; uniform float s_${p}; uniform vec3 k_${p};`).join('\n')}
+vec3 lin(sampler2D t, float s) { return pow(texture2D(t, vUv).rgb, vec3(gamma)) * s; }
+void main() {
+  vec3 c;
+  if (fijoOn > 0.5) { c = lin(t_fijo, 1.0); }
+  else {
+    c = k_sol * lin(t_sol, s_sol) + k_ent * lin(t_ent, s_ent) + k_int_d * lin(t_int_d, s_int_d) + k_int_n * lin(t_int_n, s_int_n)
+      + k_si_int * lin(t_si_int, s_si_int) + k_si_ext * lin(t_si_ext, s_si_ext);
+    float a = texture2D(t_alfa, vUv).r;
+    float u = fract(signo * vUv.x + offD);
+    float un = fract(signo * vUv.x + offN);
+    vec3 cd = pow(texture2D(cieloD, vec2(u, vUv.y)).rgb, vec3(2.2));
+    vec3 cn = pow(texture2D(cieloN, vec2(un, vUv.y)).rgb, vec3(2.2));
+    c += (1.0 - a) * (kCieloD * cd + kCieloN * cn);
+  }
+  gl_FragColor = vec4(pow(clamp(c * expo, 0.0, 1.0), vec3(1.0 / 2.2)), 1.0);
+}`;
+const vert = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const geo = new THREE.SphereGeometry(5, 96, 48);
+geo.scale(-1, 1, 1);
+const mat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: vert, fragmentShader: frag });
+const esfera = new THREE.Mesh(geo, mat);
+// el centro del panorama (u = 0,5) queda al frente de la camara inicial
+escena.add(esfera);
+
+const est = { hora: 'dia', luces: '1', geo: punto.geometrias[0].clave };
+async function cargarGeo(g) {
+  const G = punto.geometrias.find(x => x.clave === g);
+  const lista = Object.entries(G.pases);
+  const ts = await Promise.all(lista.map(([p, d]) => tex(G.dir + d.archivo)));
+  lista.forEach(([p, d], i) => { uni['t_' + p].value = ts[i]; uni['s_' + p].value = d.escala; });
+  uni.fijoOn.value = G.pases.fijo ? 1 : 0;
+  for (const b of document.querySelectorAll('button[data-k="hora"], button[data-k="luces"]')) b.disabled = !!G.pases.fijo;
+  document.getElementById('estado').textContent = G.nota || '';
+}
+function aplicar() {
+  const m = tour.mezclas[est.hora + (est.luces === '1' ? '+' : '-')];
+  for (const p of PASES) { const k = m[p] || [0, 0, 0]; uni['k_' + p].value.set(k[0], k[1], k[2]); }
+  uni.kCieloD.value = m.cieloD || 0; uni.kCieloN.value = m.cieloN || 0; uni.expo.value = m.expo || 1;
+  for (const b of document.querySelectorAll('button[data-k]')) b.setAttribute('aria-pressed', String(est[b.dataset.k] === b.dataset.v));
+}
+const cajaGeo = document.getElementById('geo');
+for (const G of punto.geometrias) {
+  const b = document.createElement('button'); b.dataset.k = 'geo'; b.dataset.v = G.clave; b.textContent = G.etiqueta; cajaGeo.appendChild(b);
+}
+document.getElementById('panel').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-k]'); if (!b || b.disabled) return;
+  est[b.dataset.k] = b.dataset.v;
+  if (b.dataset.k === 'geo') await cargarGeo(b.dataset.v);
+  aplicar();
+});
+const [cd, cn] = await Promise.all([tex(tour.cielo.dia), tex(tour.cielo.noche)]);
+cd.wrapS = cn.wrapS = THREE.RepeatWrapping;
+uni.cieloD.value = cd; uni.cieloN.value = cn; uni.offD.value = tour.cielo.offD; uni.offN.value = tour.cielo.offN; uni.signo.value = tour.cielo.signo;
+await cargarGeo(est.geo);
+aplicar();
+document.getElementById('carga').remove();
+window.__carga_ms = performance.now() - t0;
+
+// mirar con arrastre y rueda
+// lon 180 = centro del panorama (u 0,5), hacia donde mira la camara de V-Ray
+let lon = 180 + (punto.lon0 || 0), lat = 0, fov = 75, arr = null;
+lienzo.addEventListener('pointerdown', e => { arr = [e.clientX, e.clientY, lon, lat]; lienzo.setPointerCapture(e.pointerId); });
+lienzo.addEventListener('pointermove', e => { if (!arr) return; const f = fov / lienzo.clientHeight; lon = arr[2] - (e.clientX - arr[0]) * f; lat = Math.max(-85, Math.min(85, arr[3] + (e.clientY - arr[1]) * f)); });
+lienzo.addEventListener('pointerup', () => { arr = null; });
+lienzo.addEventListener('wheel', e => { fov = Math.max(30, Math.min(100, fov + e.deltaY * 0.05)); e.preventDefault(); }, { passive: false });
+addEventListener('keydown', e => {
+  const m = { d: ['hora', 'dia'], n: ['hora', 'noche'], l: ['luces', est.luces === '1' ? '0' : '1'] }[e.key];
+  if (m) { est[m[0]] = m[1]; aplicar(); }
+});
+function tam() { const w = innerWidth, h = innerHeight; ren.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+addEventListener('resize', tam); tam();
+function dibujar() {
+  const ph = THREE.MathUtils.degToRad(90 - lat), th = THREE.MathUtils.degToRad(lon);
+  cam.fov = fov; cam.updateProjectionMatrix();
+  cam.lookAt(Math.sin(ph) * Math.cos(th), Math.cos(ph), Math.sin(ph) * Math.sin(th));
+  ren.render(escena, cam);
+}
+(function bucle() { dibujar(); requestAnimationFrame(bucle); })();
+// para comprobar sin pantalla: color medio del lienzo (0-255)
+window.__medir = (h, l, lo, la) => {
+  if (h) est.hora = h; if (l) est.luces = l; if (lo !== undefined) lon = lo; if (la !== undefined) lat = la;
+  aplicar(); dibujar();
+  const gl = ren.getContext(), w = gl.drawingBufferWidth, hh = gl.drawingBufferHeight, px = new Uint8Array(w * hh * 4);
+  gl.readPixels(0, 0, w, hh, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const s = [0, 0, 0]; for (let i = 0; i < px.length; i += 4) { s[0] += px[i]; s[1] += px[i + 1]; s[2] += px[i + 2]; }
+  return s.map(v => Math.round(10 * v / (w * hh)) / 10);
+};
+window.__est = est; window.__aplicar = aplicar; window.__ren = ren;
+</script>
+</body>
+</html>

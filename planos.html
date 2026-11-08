@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor VIRTÙ · Planos</title>
+<!-- Visor VIRTU v1, etapa E2 (PRB-0002, 7-nov-2026): modulo de planos. Lee planos/planos.json (lo escribe fichas/interactivo/visor_virtu_v1/preparar_planos.py)
+     y muestra cada lamina por mosaicos de 512 px (zoom profundo sin bajar la lamina entera). Sin librerias externas. -->
+<style>
+:root { --papel:#F2EDE5; --papel2:#E9E2D7; --tinta:#1E1C1A; --gris:#7D776F; --linea:#D6CDBF; --terra:#9A5A2E; --lado:300px; }
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; overflow:hidden; background:var(--papel); color:var(--tinta); font:13px/1.4 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+button, select { font:inherit; }
+button { border:1px solid var(--linea); background:#fff; color:var(--tinta); border-radius:16px; padding:4px 11px; cursor:pointer; white-space:nowrap; }
+button:hover { border-color:var(--gris); } button:disabled { opacity:.4; cursor:default; }
+a.boton { display:inline-block; text-decoration:none; border:1px solid var(--linea); background:#fff; color:var(--tinta); border-radius:16px; padding:4px 11px; white-space:nowrap; }
+a.boton:hover { border-color:var(--gris); }
+/* lista */
+#lado { position:fixed; left:0; top:0; bottom:0; width:var(--lado); border-right:1px solid var(--linea); background:var(--papel); display:flex; flex-direction:column; z-index:3; }
+#juegos { display:flex; gap:4px; padding:10px 10px 8px; flex-wrap:wrap; border-bottom:1px solid var(--linea); }
+#juegos button { padding:4px 10px; font-size:12.5px; } #juegos button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); }
+#nota { font-size:11px; color:var(--gris); padding:8px 12px 4px; }
+#lista { flex:1; overflow:auto; padding:4px 8px 12px; }
+.item { display:flex; gap:9px; align-items:center; padding:6px; border-radius:8px; cursor:pointer; border:1px solid transparent; }
+.item:hover { background:var(--papel2); } .item.on { background:#fff; border-color:var(--linea); }
+.item img { width:86px; height:auto; border:1px solid var(--linea); background:#fff; flex:none; border-radius:2px; }
+.item b { display:block; font-size:12px; color:var(--terra); } .item span { font-size:12px; line-height:1.3; }
+#juego-pdf { padding:8px 12px 12px; border-top:1px solid var(--linea); font-size:12px; }
+#juego-pdf a { color:var(--terra); text-decoration:none; font-weight:600; }
+/* visor */
+#visor { position:fixed; left:var(--lado); right:0; top:0; bottom:0; background:#E4DED4; touch-action:none; cursor:grab; }
+#visor.arrastre { cursor:grabbing; }
+canvas { display:block; width:100%; height:100%; }
+#cab { position:fixed; left:calc(var(--lado) + 10px); right:10px; top:10px; display:flex; gap:8px; align-items:flex-start; pointer-events:none; z-index:2; }
+#cab > * { pointer-events:auto; }
+#titulo { background:rgba(242,237,229,.95); border:1px solid var(--linea); border-radius:10px; padding:7px 12px; max-width:min(560px, 60%); box-shadow:0 2px 10px rgba(30,28,26,.07); }
+#titulo b { color:var(--terra); margin-right:6px; } #titulo .det { font-size:11.5px; color:var(--gris); margin-top:2px; }
+#herr { margin-left:auto; display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; background:rgba(242,237,229,.95); border:1px solid var(--linea); border-radius:22px; padding:5px; box-shadow:0 2px 10px rgba(30,28,26,.07); }
+#herr .sep { width:1px; background:var(--linea); margin:2px 2px; }
+#zoomtxt { min-width:52px; text-align:center; align-self:center; font-size:12px; color:var(--gris); }
+#b-3d { background:var(--terra); color:#fff; border-color:var(--terra); display:none; }
+#b-lista { display:none; }
+#carga { position:fixed; left:calc(var(--lado) + 50%); bottom:16px; transform:translateX(-50%); font-size:11.5px; color:var(--gris); background:rgba(242,237,229,.9); border-radius:10px; padding:3px 10px; display:none; }
+@media (max-width:760px) {
+  #lado { width:min(320px, 86%); transform:translateX(-100%); transition:transform .25s; box-shadow:4px 0 18px rgba(0,0,0,.15); }
+  body.lista #lado { transform:none; }
+  #visor { left:0; } #cab { left:8px; right:8px; top:8px; flex-direction:column; } #titulo { max-width:100%; }
+  #herr { margin-left:0; justify-content:flex-start; } #b-lista { display:inline-block; } .solo-escritorio { display:none; }
+  #carga { left:50%; }
+}
+</style>
+</head>
+<body>
+<aside id="lado">
+  <div id="juegos"></div>
+  <div id="nota"></div>
+  <div id="lista"></div>
+  <div id="juego-pdf"></div>
+</aside>
+<div id="visor"><canvas id="lienzo"></canvas></div>
+<div id="cab">
+  <div id="titulo"><b id="t-cod"></b><span id="t-tit"></span><div class="det" id="t-det"></div></div>
+  <div id="herr">
+    <button id="b-lista" title="Lista de láminas">Láminas</button>
+    <button id="b-ant" title="Lámina anterior (Re Pág)">‹</button><button id="b-sig" title="Lámina siguiente (Av Pág)">›</button>
+    <span class="sep"></span>
+    <button id="b-menos" title="Alejar (−)">−</button><span id="zoomtxt">100 %</span><button id="b-mas" title="Acercar (+)">+</button>
+    <button id="b-ajustar" title="Lámina completa (0)">Ajustar</button>
+    <span class="sep solo-escritorio"></span>
+    <a class="boton" id="b-pdf" target="_blank" rel="noopener" title="Abrir el PDF de la lámina">PDF</a>
+    <button id="b-3d" title="Ir al modelo 3D, a la zona de este detalle">Ver en 3D</button>
+  </div>
+</div>
+<div id="carga"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const PL = window.PL = { listo: false };
+const cache = new Map(); const MAXCACHE = 450;
+let datos, juego, lamina, idx = 0;
+let s = 1, ox = 0, oy = 0;          // escala (px de pantalla CSS por px del nivel 0) y origen de la lamina en pantalla
+const lienzo = $('#lienzo'), cx = lienzo.getContext('2d'), visor = $('#visor');
+let dpr = Math.min(devicePixelRatio || 1, 2), pendiente = false, pedidos = 0;
+
+function avisarPadre(m) { if (parent !== window) parent.postMessage(m, location.origin); }
+
+// ---------------------------------------------------------------- lista
+function ponerJuego(id, codigo) {
+  juego = datos.juegos.find(j => j.id === id) || datos.juegos[0];
+  document.querySelectorAll('#juegos button').forEach(b => b.classList.toggle('on', b.dataset.j === juego.id));
+  $('#nota').textContent = juego.nota;
+  $('#lista').innerHTML = '';
+  juego.laminas.forEach((L, i) => {
+    const d = document.createElement('div'); d.className = 'item'; d.dataset.i = i;
+    d.innerHTML = `<img loading="lazy" src="${L.carpeta}mini.webp" alt=""><div><b>${L.codigo}</b><span>${L.titulo}</span></div>`;
+    d.onclick = () => { ponerLamina(i); document.body.classList.remove('lista'); };
+    $('#lista').appendChild(d);
+  });
+  $('#juego-pdf').innerHTML = juego.juego_pdf ? `<a href="${datos.raiz_origen}${juego.juego_pdf}" target="_blank" rel="noopener">PDF del juego completo →</a>` : '<span style="color:var(--gris)">Cada lámina se descarga en JPG con el botón de arriba</span>';
+  const i = codigo ? Math.max(0, juego.laminas.findIndex(L => L.codigo === codigo)) : 0;
+  ponerLamina(i);
+}
+function ponerLamina(i) {
+  idx = Math.max(0, Math.min(juego.laminas.length - 1, i)); lamina = juego.laminas[idx];
+  document.querySelectorAll('.item').forEach(d => d.classList.toggle('on', +d.dataset.i === idx));
+  const it = document.querySelector(`.item[data-i="${idx}"]`); if (it) it.scrollIntoView({ block: 'nearest' });
+  $('#t-cod').textContent = lamina.codigo; $('#t-tit').textContent = lamina.titulo;
+  $('#t-det').textContent = [juego.nombre, lamina.escalas ? 'escalas ' + lamina.escalas : null, lamina.muestra].filter(Boolean).join(' · ');
+  // Visor VIRTU (Pipe, 7-nov: «las laminas pueden ser jpg no crees?»): si la lamina trae JPG de descarga (carpeta publicable), el boton lo baja
+  const pdf = lamina.pdf || juego.juego_pdf; const bp = $('#b-pdf');
+  if (lamina.jpg) { bp.href = lamina.jpg; bp.style.display = ''; bp.textContent = 'JPG'; bp.title = 'Descargar la lámina en JPG (' + lamina.jpg_px + ' px, ' + lamina.jpg_mb + ' MB)'; bp.setAttribute('download', lamina.codigo + '.jpg'); }
+  else if (pdf) { bp.href = datos.raiz_origen + pdf; bp.style.display = ''; bp.textContent = lamina.pdf ? 'PDF' : 'PDF del juego'; bp.title = 'Abrir el PDF de la lámina'; bp.removeAttribute('download'); } else bp.style.display = 'none';
+  $('#b-3d').style.display = lamina.lugar_um && parent !== window ? 'inline-block' : 'none';
+  $('#b-ant').disabled = idx === 0; $('#b-sig').disabled = idx === juego.laminas.length - 1;
+  ajustar();
+  history.replaceState(null, '', '#' + juego.id + '/' + lamina.codigo);
+  avisarPadre({ virtu: 'lamina', juego: juego.id, codigo: lamina.codigo });
+}
+
+// ---------------------------------------------------------------- dibujo por mosaicos
+function tamNivel(n) { let w = lamina.ancho, h = lamina.alto; for (let k = 0; k < n; k++) { w = Math.ceil(w / 2); h = Math.ceil(h / 2); } return [w, h]; }
+function tesela(n, c, f) {
+  const k = lamina.carpeta + n + '/' + c + '_' + f + '.webp';
+  let t = cache.get(k);
+  if (t) { cache.delete(k); cache.set(k, t); return t.complete && t.naturalWidth ? t : null; }
+  t = new Image(); pedidos++; t.onload = t.onerror = () => { pedidos--; pedir(); }; t.src = k; cache.set(k, t);
+  if (cache.size > MAXCACHE) cache.delete(cache.keys().next().value);
+  return null;
+}
+const minis = new Map();
+function miniatura() {
+  let m = minis.get(lamina.carpeta);
+  if (!m) { m = new Image(); m.onload = pedir; m.src = lamina.carpeta + 'mini.webp'; minis.set(lamina.carpeta, m); }
+  return m.complete && m.naturalWidth ? m : null;
+}
+function dibujarNivel(n) {
+  const [w, h] = tamNivel(n), rx = lamina.ancho / w, ry = lamina.alto / h, T = datos.tesela;
+  const cw = lienzo.width / dpr, ch = lienzo.height / dpr;
+  const x0 = Math.max(0, Math.floor((-ox / s) / rx / T)), x1 = Math.min(Math.ceil(w / T) - 1, Math.floor(((cw - ox) / s) / rx / T));
+  const y0 = Math.max(0, Math.floor((-oy / s) / ry / T)), y1 = Math.min(Math.ceil(h / T) - 1, Math.floor(((ch - oy) / s) / ry / T));
+  let faltan = 0;
+  for (let f = y0; f <= y1; f++) for (let c = x0; c <= x1; c++) {
+    const t = tesela(n, c, f);
+    if (t) cx.drawImage(t, ox + c * T * rx * s, oy + f * T * ry * s, t.naturalWidth * rx * s + 0.5, t.naturalHeight * ry * s + 0.5);
+    else faltan++;
+  }
+  return faltan;
+}
+function dibujar() {
+  pendiente = false; if (!lamina) return;
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.fillStyle = '#E4DED4'; cx.fillRect(0, 0, lienzo.width, lienzo.height);
+  cx.fillStyle = '#fff'; cx.shadowColor = 'rgba(30,28,26,.18)'; cx.shadowBlur = 14; cx.fillRect(ox, oy, lamina.ancho * s, lamina.alto * s); cx.shadowBlur = 0;
+  cx.imageSmoothingQuality = 'high';
+  const ideal = Math.max(0, Math.min(lamina.niveles - 1, Math.floor(Math.log2(1 / (s * dpr)))));
+  const base = lamina.niveles - 1;
+  const mini = miniatura(); if (mini) cx.drawImage(mini, ox, oy, lamina.ancho * s, lamina.alto * s);   // la miniatura de la lista: aparece al instante
+  dibujarNivel(base);                                   // la lamina entera, gruesa, siempre debajo
+  if (ideal + 1 < base) dibujarNivel(ideal + 1);        // un nivel intermedio mientras llega el fino
+  const faltan = ideal < base ? dibujarNivel(ideal) : 0;
+  $('#zoomtxt').textContent = Math.round(s * dpr * 100) + ' %';      // 100 % = un pixel de la lamina (nivel 0) por pixel de pantalla
+  $('#carga').style.display = faltan ? 'block' : 'none'; $('#carga').textContent = `cargando ${faltan} mosaicos…`;
+  PL.nivel = ideal; PL.faltan = faltan; PL.cache = cache.size;
+}
+function pedir() { if (!pendiente) { pendiente = true; requestAnimationFrame(dibujar); } }
+function medir() { const r = visor.getBoundingClientRect(); lienzo.width = Math.round(r.width * dpr); lienzo.height = Math.round(r.height * dpr); }
+function ajustar() {
+  medir(); const r = visor.getBoundingClientRect(); const mov = innerWidth <= 760;
+  const arriba = mov ? 110 : 64, m = 24;
+  s = Math.min((r.width - 2 * m) / lamina.ancho, (r.height - arriba - m) / lamina.alto);
+  ox = (r.width - lamina.ancho * s) / 2; oy = arriba + (r.height - arriba - m - lamina.alto * s) / 2; pedir();
+}
+function zoom(f, px, py) {
+  const r = visor.getBoundingClientRect(); if (px === undefined) { px = r.width / 2; py = r.height / 2; }
+  const smin = Math.min(r.width / lamina.ancho, r.height / lamina.alto) * 0.3, smax = 2.5 / dpr;   // hasta 250 % del nivel 0
+  const ns = Math.max(smin, Math.min(smax, s * f)); f = ns / s;
+  ox = px - (px - ox) * f; oy = py - (py - oy) * f; s = ns; pedir();
+}
+PL.zoom = zoom; PL.ajustar = ajustar; PL.estado = () => ({ juego: juego.id, lamina: lamina.codigo, s, ox, oy, nivel: PL.nivel, faltan: PL.faltan, cache: cache.size, pedidos });
+
+// ---------------------------------------------------------------- raton, tacto y teclado
+const punteros = new Map(); let ultDist = 0, ultMed = null;
+visor.addEventListener('wheel', e => { e.preventDefault(); const r = visor.getBoundingClientRect(); zoom(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+visor.addEventListener('pointerdown', e => { visor.setPointerCapture(e.pointerId); punteros.set(e.pointerId, [e.clientX, e.clientY]); visor.classList.add('arrastre'); ultDist = 0; ultMed = null; });
+visor.addEventListener('pointermove', e => {
+  if (!punteros.has(e.pointerId)) return;
+  const prev = punteros.get(e.pointerId); punteros.set(e.pointerId, [e.clientX, e.clientY]);
+  if (punteros.size === 1) { ox += e.clientX - prev[0]; oy += e.clientY - prev[1]; pedir(); return; }
+  const [a, b] = [...punteros.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); const r = visor.getBoundingClientRect();
+  const med = [(a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top];
+  if (ultDist) { zoom(d / ultDist, med[0], med[1]); ox += med[0] - ultMed[0]; oy += med[1] - ultMed[1]; }
+  ultDist = d; ultMed = med;
+});
+const soltar = e => { punteros.delete(e.pointerId); if (!punteros.size) visor.classList.remove('arrastre'); ultDist = 0; };
+visor.addEventListener('pointerup', soltar); visor.addEventListener('pointercancel', soltar);
+visor.addEventListener('dblclick', e => { const r = visor.getBoundingClientRect(); zoom(2, e.clientX - r.left, e.clientY - r.top); });
+addEventListener('keydown', e => {
+  if (e.key === '+' || e.key === '=') zoom(1.4); else if (e.key === '-') zoom(1 / 1.4); else if (e.key === '0') ajustar();
+  else if (e.key === 'PageDown' || e.key === 'ArrowRight' && e.altKey) ponerLamina(idx + 1); else if (e.key === 'PageUp' || e.key === 'ArrowLeft' && e.altKey) ponerLamina(idx - 1);
+});
+$('#b-mas').onclick = () => zoom(1.5); $('#b-menos').onclick = () => zoom(1 / 1.5); $('#b-ajustar').onclick = ajustar;
+$('#b-ant').onclick = () => ponerLamina(idx - 1); $('#b-sig').onclick = () => ponerLamina(idx + 1);
+$('#b-lista').onclick = () => document.body.classList.toggle('lista');
+$('#b-3d').onclick = () => { const [u, v] = lamina.lugar_um; const c = lamina.caja_um;
+  avisarPadre({ virtu: 'ir', modulo: '3d', mirar: { x: v, y: u, caja: c ? [c[1], c[0], c[3], c[2]] : null, etiqueta: lamina.codigo + ' · ' + lamina.titulo } }); };
+addEventListener('resize', () => { const r0 = s; ajustar(); });
+addEventListener('message', ev => { if (ev.origin !== location.origin || !ev.data || ev.data.virtu !== 'lamina') return;
+  if (ev.data.juego && ev.data.juego !== juego.id) ponerJuego(ev.data.juego, ev.data.codigo); else if (ev.data.codigo) ponerLamina(juego.laminas.findIndex(L => L.codigo === ev.data.codigo)); });
+
+// ---------------------------------------------------------------- arranque
+(async () => {
+  datos = await (await fetch('planos/planos.json')).json(); PL.datos = datos;
+  for (const J of datos.juegos) { const b = document.createElement('button'); b.textContent = J.nombre; b.dataset.j = J.id; b.onclick = () => ponerJuego(J.id); $('#juegos').appendChild(b); }
+  const [j, c] = location.hash.replace('#', '').split('/');
+  ponerJuego(j || datos.juegos[0].id, c);
+  PL.listo = true;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor VIRTÙ · 3D</title>
+<!-- IW1 (PRB-0002, 7-nov-2026): prototipo de visor web. Lee modelo/manifiesto.json; las capas, redes y el catalogo de productos salen de
+     ahi, asi que las redes completas de RT1 entran regenerando el manifiesto, sin tocar este archivo. three.js 0.160.0 fijo (jsdelivr). -->
+<style>
+  /* Visor VIRTU v1 (7-nov-2026): identidad VIRTU (papel, tinta, terracota), escenas abajo, capas en un panel "Capas y ajustes" plegado. */
+  :root { --bg:#F2EDE5; --panel:rgba(242,237,229,.95); --tinta:#1E1C1A; --suave:#7D776F; --linea:#D6CDBF; --acento:#9A5A2E; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--tinta); font:13px/1.4 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; overflow:hidden; }
+  #lienzo { position:fixed; inset:0; touch-action:none; }
+  .caja { background:var(--panel); border:1px solid var(--linea); box-shadow:0 2px 12px rgba(30,28,26,.08); }
+  #herr { position:fixed; top:10px; left:10px; display:flex; gap:5px; align-items:center; flex-wrap:wrap; border-radius:22px; padding:5px; max-width:calc(100% - 20px); }
+  #herr .sep { width:1px; height:20px; background:var(--linea); margin:0 3px; }
+  #panel { position:fixed; top:58px; left:10px; width:300px; max-height:calc(100% - 140px); overflow:auto; border-radius:10px; padding:4px 12px 10px; display:none; }
+  #panel.abierto { display:block; }
+  h2 { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--acento); margin:12px 0 4px; font-weight:700; }
+  h2:first-child { margin-top:8px; }
+  .fila { display:flex; align-items:center; gap:6px; margin:3px 0; }
+  .fila label { flex:1; cursor:pointer; } .fila .mb { color:var(--suave); font-size:10px; }
+  .fila input[type=range] { width:90px; accent-color:var(--acento); } input[type=checkbox] { accent-color:var(--tinta); }
+  .chip { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .botones { display:flex; gap:6px; flex-wrap:wrap; }
+  button { font:inherit; border:1px solid var(--linea); background:#fff; color:var(--tinta); border-radius:16px; padding:4px 11px; cursor:pointer; white-space:nowrap; }
+  button:hover { border-color:var(--suave); }
+  button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); }
+  select { font:inherit; }
+  #escenas { position:fixed; left:50%; bottom:14px; transform:translateX(-50%); display:flex; gap:6px; border-radius:28px; padding:6px; max-width:calc(100% - 20px); overflow-x:auto; scrollbar-width:none; }
+  #escenas button { padding:8px 16px; font-weight:600; font-size:13px; }
+  #escenas button.on { background:var(--acento); border-color:var(--acento); color:#fff; }
+  #escenas button small { font-weight:400; opacity:.8; }
+  #ficha { position:fixed; right:10px; top:10px; width:310px; border-radius:10px; padding:10px 12px; display:none; }
+  #ficha .t { display:flex; justify-content:space-between; align-items:center; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--acento); font-weight:700; margin-bottom:4px; }
+  #ficha .t button { border:none; background:none; font-size:16px; padding:0 4px; color:var(--suave); }
+  #ficha table { width:100%; border-collapse:collapse; font-size:12px; } #ficha td { padding:2px 0; vertical-align:top; } #ficha td:first-child { color:var(--suave); width:86px; }
+  #ficha a, .enlace { color:var(--acento); cursor:pointer; text-decoration:none; font-weight:600; }
+  #planta { position:fixed; right:10px; bottom:10px; border-radius:10px; padding:6px; }
+  #hud { position:fixed; left:10px; bottom:76px; background:rgba(30,28,26,.8); color:#F2EDE5; border-radius:6px; padding:5px 8px; font:11px/1.35 ui-monospace, Consolas, monospace; display:none; }
+  #hud.ver { display:block; }
+  #aviso { position:fixed; left:50%; top:62px; transform:translateX(-50%); max-width:min(560px, calc(100% - 20px)); border-radius:10px; padding:8px 12px; font-size:12px; text-align:center; opacity:0; transition:opacity .4s; pointer-events:none; }
+  #aviso.ver { opacity:1; }
+  #carga { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; background:var(--bg); }
+  #carga > div { padding:18px 22px; min-width:280px; border-radius:12px; }
+  #carga .logo { font-weight:800; letter-spacing:.16em; font-size:20px; margin-bottom:8px; } #carga .logo i { font-style:normal; color:var(--acento); }
+  #barra { height:4px; background:var(--linea); border-radius:2px; overflow:hidden; margin-top:10px; } #barra i { display:block; height:100%; width:0; background:var(--acento); transition:width .2s; }
+  #mira { position:fixed; left:50%; top:50%; width:8px; height:8px; margin:-4px 0 0 -4px; border:1px solid #fff; border-radius:50%; box-shadow:0 0 2px #000; display:none; pointer-events:none; }
+  .ayuda { color:var(--suave); font-size:11px; margin-top:4px; }
+  body.noche { --panel:rgba(31,38,48,.92); --tinta:#F2EDE5; --suave:#A9A39A; --linea:#3A4452; }
+  body.noche button { background:#2A3340; color:#F2EDE5; } body.noche button.on { background:#F2EDE5; color:#1E1C1A; }
+  body.noche #escenas button.on { background:var(--acento); color:#fff; }
+  #axo-lista, #axo-barra { display:none; }
+  body.axo #herr, body.axo #escenas, body.axo #planta, body.axo #panel, body.axo #hud { display:none !important; }
+  body.axo #axo-lista { display:block; position:fixed; left:10px; top:10px; bottom:84px; width:270px; overflow:auto; border-radius:10px; padding:4px 8px 8px; }
+  body.axo #axo-barra { display:flex; position:fixed; left:290px; right:10px; width:max-content; max-width:calc(100% - 300px); margin:0 auto; bottom:14px; gap:6px; align-items:center; border-radius:26px; padding:6px 8px; flex-wrap:wrap; justify-content:center; }
+  #axo-barra .grupo { display:flex; gap:4px; } #axo-barra .sep { width:1px; height:22px; background:var(--linea); }
+  #axo-barra button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); }
+  #axo-barra label { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--suave); } #axo-barra input[type=range] { width:110px; accent-color:var(--acento); }
+  #axo-3d { background:var(--acento) !important; color:#fff !important; border-color:var(--acento) !important; }
+  .ax { display:flex; gap:9px; align-items:center; padding:7px 8px; border-radius:8px; cursor:pointer; border:1px solid transparent; }
+  .ax:hover { background:rgba(0,0,0,.04); } .ax.on { background:#fff; border-color:var(--linea); }
+  .ax .pt { width:11px; height:11px; border-radius:50%; flex:none; } .ax b { display:block; font-size:12.5px; } .ax small { color:var(--suave); font-size:11px; }
+  @media (max-width:700px) {
+    body.axo #axo-lista { left:8px; right:8px; top:8px; bottom:auto; width:auto; height:auto; overflow-x:auto; overflow-y:hidden; padding:5px; }
+    body.axo #axo-lista h2 { display:none; } #axo-items { display:flex; gap:4px; } .ax { flex:none; padding:5px 9px; } .ax small { display:none; }
+    body.axo #axo-barra { left:8px; right:8px; max-width:calc(100% - 16px); bottom:8px; }
+  }
+  #vistas2 { display:none; }
+  @media (pointer:coarse) { #b-pie { display:none; } }          /* caminar pide teclado y raton: en pantallas tactiles se oculta (pendiente) */
+  @media (max-width:700px) {
+    #herr { top:8px; left:8px; } #herr #vistas, #herr .sep { display:none; } #vistas2 { display:flex; margin-top:8px; } #panel { top:auto; bottom:70px; left:8px; width:calc(100% - 16px); max-height:50%; }
+    #ficha { width:calc(100% - 16px); right:8px; top:auto; bottom:70px; max-height:50%; overflow:auto; }
+    #planta { display:none; } #escenas { bottom:8px; } #escenas button { padding:7px 12px; font-size:12px; } #hud { bottom:70px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="lienzo"></canvas>
+<div id="mira"></div>
+<div id="herr" class="caja">
+  <button id="b-orbita" class="on" title="Girar alrededor de la casa">Órbita</button><button id="b-pie" title="Caminar dentro, a 1,60 m">A pie</button>
+  <span class="sep"></span><span id="vistas" class="botones" style="gap:5px"></span>
+  <span class="sep"></span><button id="b-panel" title="Capas, transparencia, sol y persiana">Capas y ajustes</button>
+</div>
+<div id="aviso" class="caja"></div>
+<div id="escenas" class="caja">
+  <button data-esc="arq" class="on" title="La casa como es">Arquitectura</button>
+  <button data-esc="redes" title="Arquitectura casi transparente; cada red de su color">Redes</button>
+  <button id="b-noche" title="Cielo de noche y luminarias encendidas (aproximado; la noche real llega con los 360 V-Ray)">Noche</button>
+  <button id="b-pers" title="Persiana oeste: recogida, abierta o cerrada">Persiana <small id="pers-t">recogida</small></button>
+</div>
+<div id="panel" class="caja">
+  <div class="ayuda" id="ayuda-modo" style="display:none"></div>
+  <div class="botones" id="vistas2"></div>
+  <h2>Transparencia</h2>
+  <div id="transp"></div>
+  <div class="fila"><input type="checkbox" id="rx"><label for="rx"><b>Rayos X</b>: ver las redes a través de la arquitectura</label></div>
+  <div id="fuente-caja" style="display:none">
+  <h2>Redes técnicas</h2>
+  <div class="fila"><input type="radio" name="fuente" id="fuente-rt2" value="rt2"><label for="fuente-rt2">Calculadas por RT2 <span class="mb">propuesta · producto por pieza</span></label></div>
+  <div class="fila"><input type="radio" name="fuente" id="fuente-v3n" value="v3n"><label for="fuente-v3n">Modelo v3n <span class="mb">D12 y RT1 v1</span></label></div>
+  <div id="capas-rt2"></div>
+  </div>
+  <h2>Capas</h2>
+  <div id="capas"></div>
+  <h2>Escena</h2>
+  <div class="fila"><label for="pers">Persiana oeste</label><select id="pers"><option>recogida</option><option>abierta</option><option>cerrada</option></select></div>
+  <div class="fila"><input type="checkbox" id="sombras" checked><label for="sombras">Sombras del sol</label></div>
+  <div class="fila"><label for="hora">Sol</label><input type="range" id="hora" min="0" max="100" value="38"></div>
+  <h2>Rendimiento</h2>
+  <div class="fila"><input type="checkbox" id="ver-hud"><label for="ver-hud">Mostrar cuadros por segundo y carga</label></div>
+  <div class="ayuda">Modelo: central v3n, exportado por IW1 (18 capas). Visor VIRTÙ v1.</div>
+</div>
+<div id="axo-lista" class="caja"><h2>Axonometrías</h2><div id="axo-items"></div></div>
+<div id="axo-barra" class="caja">
+  <span id="axo-vista" class="grupo"><button data-v="so" title="Desde el suroeste">SO</button><button data-v="se" title="Desde el sureste">SE</button><button data-v="ne" title="Desde el noreste">NE</button><button data-v="no" title="Desde el noroeste">NO</button><button data-v="planta" title="Planta, norte arriba">Planta</button></span>
+  <span class="sep"></span>
+  <span id="axo-estilo" class="grupo"><button data-v="mat" class="on">Materiales</button><button data-v="maqueta">Maqueta</button></span>
+  <span class="sep"></span>
+  <label id="axo-sep-l">Separación <input type="range" id="axo-sep" min="0" max="9" step="0.1" value="4.5"></label>
+  <button id="axo-png" title="Descargar la vista como imagen (doble resolución)">PNG</button>
+  <button id="axo-3d" title="Volver al recorrido 3D">Ver en 3D</button>
+</div>
+<div id="ficha" class="caja"></div>
+<div id="planta" class="caja"><canvas id="cplanta" width="190" height="260"></canvas></div>
+<div id="hud">cargando…</div>
+<div id="carga"><div class="caja"><div class="logo">VIRT<i>Ù</i></div><b id="carga-t">Cargando la casa…</b><div id="carga-d" class="ayuda"></div><div id="barra"><i></i></div></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';   // publicable: GLB comprimidos
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+const BASE = 'modelo/';  // Visor VIRTU v1: consume el modelo de IW1 sin copiarlo (174 MB)
+const t0 = performance.now();
+const IW = window.IW = { stats: {}, capas: {}, listo: false, THREE };
+const $ = (s) => document.querySelector(s);
+
+// ---------------------------------------------------------------- escena
+const lienzo = $('#lienzo');
+const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc9dbe8);
+scene.fog = new THREE.Fog(0xc9dbe8, 120, 420);
+const camara = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.3, 1500);
+let camActiva = camara;          // Visor VIRTU E4: en axonometria se dibuja con la camara ortografica
+const CENTRO = new THREE.Vector3(4.0, 1.5, -17.0);     // casa: x de 0 a 8 m, y (Max) de 0 a 35 m
+camara.position.set(-15, 7.5, 10);
+const hemi = new THREE.HemisphereLight(0xe8f0f7, 0x7d7a62, 1.1); scene.add(hemi);
+const amb = new THREE.AmbientLight(0xfff6ea, 0.9); scene.add(amb);   // relleno para el interior (sin GI en el navegador)
+const sol = new THREE.DirectionalLight(0xfff3e2, 3.0);
+sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
+Object.assign(sol.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 200 });
+sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.03;
+scene.add(sol); scene.add(sol.target); sol.target.position.copy(CENTRO);
+function ponerSol(v) {           // 0..100: de la mañana (este) a la tarde (oeste), altura de arco simple
+  const a = (v / 100) * Math.PI;  const elev = 0.25 + 0.75 * Math.sin(a);
+  const dir = new THREE.Vector3(Math.cos(a), 0, 0);                      // a = 0: este (x+); a = pi: oeste
+  dir.z = 0.55; dir.y = elev * 1.4; dir.normalize();                     // el sol va por el sur (z+ de three = sur)
+  sol.position.copy(CENTRO).addScaledVector(dir, 80);
+  renderer.shadowMap.needsUpdate = true;
+}
+ponerSol(38);
+
+const orbita = new OrbitControls(camara, lienzo);
+orbita.target.copy(CENTRO); orbita.enableDamping = true; orbita.maxPolarAngle = Math.PI * 0.495; orbita.update();
+const pie = new PointerLockControls(camara, document.body);
+Object.assign(IW, { renderer, scene, camara, orbita });
+IW.medir = (n = 30) => {           // tiempo de render sin depender del requestAnimationFrame (el panel oculto lo frena)
+  const gl = renderer.getContext(); renderer.render(scene, camActiva); gl.finish();
+  const t = performance.now(); for (let i = 0; i < n; i++) { if (modo === 'pie') mover(1 / 60); else if (IW.modoAxo) IW.orbitaAxo.update(); else orbita.update(); renderer.render(scene, camActiva); } gl.finish();
+  const ms = (performance.now() - t) / n; const inf = renderer.info.render;
+  return { ms_por_cuadro: +ms.toFixed(2), cps_equivalentes: +(1000 / ms).toFixed(1), llamadas: inf.calls, triangulos: inf.triangles };
+};
+
+// ---------------------------------------------------------------- manifiesto y carga
+const man = await (await fetch(BASE + 'manifiesto.json')).json();
+IW.manifiesto = man;
+let catalogo = null;
+if (man.catalogo_productos) { try { catalogo = await (await fetch(BASE + man.catalogo_productos)).json(); } catch (e) { catalogo = null; } }
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+THREE.Cache.enabled = true;
+const pesoIni = man.capas.filter(c => c.inicial).reduce((s, c) => s + c.bytes + c.bytes_texturas, 0);
+let cargadoIni = 0;
+
+// Visor VIRTU (Pipe, 7-nov: «la textura roja del piso no juega bien, se que es tierra pero para efectos de la representacion
+// puedes ponerla verde como el pasto?»): el piso del bosque (SIT-TERRENO|WUE-tierra-mantillo) se dibuja con el material del
+// cesped, a su misma escala real (cesped: 1,85 m por repeticion en sus UV; mantillo: 0,94 m). Solo en el visor; ?suelo=tierra
+// muestra el mantillo original. La jardinera de corteza del patio conserva su material.
+const SUELO_TIERRA = new URLSearchParams(location.search).get('suelo') === 'tierra';
+const SUELO = { cesped_m: 1.85, mantillo_m: 0.94 };
+function sueloVerde(g) {
+  let cesped = null; const piso = [], sombra = [];
+  g.traverse(o => { if (!o.isMesh) return;
+    if (o.material.name === 'WUE-cesped') cesped = o.material;
+    if (o.name.startsWith('SIT-TERRENO|') && o.material.name === 'WUE-tierra-mantillo') piso.push(o);
+    if (o.material.name === 'WUE-r22-mantillo-sombra') sombra.push(o); });
+  if (!cesped || !piso.length) return;
+  const m = cesped.clone(); m.name = 'VIRTU-piso-bosque-cesped';
+  if (cesped.map) { m.map = cesped.map.clone(); m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping; const k = SUELO.mantillo_m / SUELO.cesped_m; m.map.repeat.set(k, k); m.map.needsUpdate = true; }
+  for (const o of piso) o.material = m;
+  // el anillo exterior "mantillo-sombra" (casi negro, 344 m) pasa al color medio del cesped (118/132/45) al 70 %: sigue siendo sombra, pero verde
+  const s = cesped.clone(); s.name = 'VIRTU-piso-bosque-sombra'; s.map = null; s.color.setRGB(118 / 255 * 0.7, 132 / 255 * 0.7, 45 / 255 * 0.7, THREE.SRGBColorSpace);
+  for (const o of sombra) o.material = s;
+  IW.sueloVerde = { mallas: piso.map(o => o.name), sombra: sombra.map(o => o.name), repeticion: +(SUELO.mantillo_m / SUELO.cesped_m).toFixed(3) };
+}
+// Visor VIRTU (Pipe, 7-nov: «al panear la vista aerea el techo se ve con partes blancas»): las capas constructivas escondidas
+// (material WUE-oculto-gris: PIR, cubricion y bajo albardilla en la cubierta; aislaciones y membranas en muros, losa y sitio) quedan
+// a 1-2 mm de la piel visible. Desde 40 m la tarjeta no distingue 1 mm y las dos superficies se alternan (z-fighting): salen puntos
+// grises. Se empujan hacia atras en profundidad (polygonOffset) sin moverlas ni esconderlas; ?oculto=igual muestra el original.
+const OCULTO_SIN_AJUSTE = new URLSearchParams(location.search).get('oculto') === 'igual';
+const OCULTO_OFFSET = { factor: 2, unidades: 8 };
+function ponerOculto(m) { m.polygonOffset = true; m.polygonOffsetFactor = OCULTO_OFFSET.factor; m.polygonOffsetUnits = OCULTO_OFFSET.unidades; m.needsUpdate = true; }
+function prepararCapa(c, gltf) {
+  const g = gltf.scene; g.name = c.id; g.userData.capa = c;
+  if (c.id === 'SIT-TERRENO' && !SUELO_TIERRA) sueloVerde(g);
+  const mats = new Set();
+  g.traverse(o => {
+    if (!o.isMesh) return;
+    o.userData.capaId = c.id;
+    o.castShadow = c.grupo !== 'redes' && c.id !== 'SIT-TERRENO';
+    o.receiveShadow = true;
+    const m = o.material; mats.add(m);
+    if (m.map) { m.map.anisotropy = 4; }
+    if (m.userData.virtu_veg && !VEG_IW1) prepararVeg(m);
+    if (m.name === 'WUE-oculto-gris' && !OCULTO_SIN_AJUSTE) { m.userData.oculto = true; ponerOculto(m); }
+    m.userData.base = { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite, emissive: m.emissive ? m.emissive.clone() : null, color: m.color.clone(), map: m.map };
+  });
+  IW.capas[c.id] = { def: c, grupo: g, mats: [...mats], opacidad: 1 };
+  g.visible = c.visible;
+  scene.add(g);
+  aplicarPersiana(); aplicarRayos(); aplicarTransp(c.id);
+  if (IW.noche) { aplicarNocheCapa(IW.capas[c.id]); if (c.id === 'MOB-LUMINARIAS') IW.lucesNoche = armarLucesNoche(); }
+  if (IW.modoAxo && IW.axoActual) { IW.aplicarAxo(IW.axoActual, true); IW.reencuadrarAxo(); }   // una capa que llega tarde entra con la axonometria vigente
+  renderer.shadowMap.needsUpdate = true;
+  const cb = document.getElementById('cb-' + c.id); if (cb) { cb.disabled = false; cb.checked = c.visible; }   // la casilla sigue la capa, no la axonometria del momento
+  const mb = document.getElementById('mb-' + c.id); if (mb) mb.textContent = ((c.bytes + c.bytes_texturas) / 1e6).toFixed(1) + ' MB';
+}
+// Visor VIRTU (Pipe, 7-nov: «la vegetacion en el modelo se ve un poco mal»): la vegetacion se lee de la copia con normales
+// de copa que arma fichas/interactivo/visor_virtu_v1/preparar_vegetacion.py; si falta, se usa la de IW1 tal cual
+const SUSTITUTOS = {};   // publicable: la vegetacion v2 ya es modelo/SIT-VEGETACION.glb
+const VEG_IW1 = new URLSearchParams(location.search).get('veg') === 'iw1';   // ?veg=iw1: la vegetacion original, para comparar
+if (VEG_IW1) delete SUSTITUTOS['SIT-VEGETACION'];
+const VEG_RELLENO = { dia: 0.22, noche: 0.0 }; IW.vegRelleno = [];
+function cargarCapa(c, onprog) {
+  const url = SUSTITUTOS[c.id] || (BASE + c.archivo);
+  return new Promise((res, rej) => loader.load(url, (gl) => { prepararCapa(c, gl); res(); }, onprog,
+    (e) => { if (SUSTITUTOS[c.id]) { delete SUSTITUTOS[c.id]; cargarCapa(c, onprog).then(res, rej); } else rej(e); }));
+}
+// Follaje en el navegador: (1) las normales de copa no se voltean en la cara de atras (si se voltean, media copa sale negra);
+// (2) recorte suave con alpha to coverage (bordes sin dientes) y (3) la transparencia de las hojas se refuerza con la distancia
+// (nivel de mip): al reducir la textura el alfa se promedia, cae bajo el corte y el arbol lejano se queda en los palos.
+function prepararVeg(m) {
+  if (m.userData.vegLista) return; m.userData.vegLista = true;
+  const recorte = m.alphaTest > 0 && !!m.map;
+  if (recorte) m.alphaToCoverage = true;
+  // (4) relleno de copa: la luz que en V-Ray pasa a traves de las hojas y rebota (GI) aqui no existe; sin el, el lado
+  // en sombra de los pinos sale negro. Es una fraccion de la propia textura (no cambia el color) y se apaga de noche.
+  if (m.userData.virtu_veg === 'copa' && m.map && m.emissive) { m.emissiveMap = m.map; m.emissive.setRGB(1, 1, 1); m.emissiveIntensity = IW.noche ? VEG_RELLENO.noche : VEG_RELLENO.dia; IW.vegRelleno.push(m); }
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>',
+      THREE.ShaderChunk.normal_fragment_begin.replace('normal *= faceDirection;', '/* VIRTU: copa sin voltear */'));
+    if (recorte) sh.fragmentShader = sh.fragmentShader.replace('#include <alphatest_fragment>', `
+      { vec2 tm = vMapUv * vec2(textureSize(map, 0)); vec2 ddx = dFdx(tm), ddy = dFdy(tm);
+        float lod = clamp(0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy))), 0.0, 6.0);
+        diffuseColor.a *= 1.0 + 0.25 * lod; }
+      diffuseColor.a = clamp((diffuseColor.a - alphaTest) / max(fwidth(diffuseColor.a), 1e-4) + 0.5, 0.0, 1.0);
+      if (diffuseColor.a < 0.01) discard;`);
+  };
+  m.customProgramCacheKey = () => 'virtu-veg-' + (recorte ? 'r' : 'o');
+  m.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------- panel
+const grupos = { arquitectura: 'Arquitectura', mobiliario: 'Mobiliario', sitio: 'Sitio', redes: 'Redes técnicas', detalle: 'Detalle' };
+for (const [gk, gn] of Object.entries(grupos)) {
+  const cs = man.capas.filter(c => c.grupo === gk); if (!cs.length) continue;
+  const h = document.createElement('div'); h.className = 'ayuda'; h.style.margin = '6px 0 2px'; h.textContent = gn; $('#capas').appendChild(h);
+  for (const c of cs) {
+    const f = document.createElement('div'); f.className = 'fila';
+    f.innerHTML = `<input type="checkbox" id="cb-${c.id}" ${c.visible ? 'checked' : ''} disabled>` +
+      (c.color ? `<span class="chip" style="background:${c.color}"></span>` : '') +
+      `<label for="cb-${c.id}">${c.nombre}</label><span class="mb" id="mb-${c.id}">${c.inicial ? '' : 'en espera'}</span>`;
+    $('#capas').appendChild(f);
+    f.querySelector('input').addEventListener('change', async (e) => {
+      const L = IW.capas[c.id];
+      if (!L) { e.target.disabled = true; c.visible = true; await cargarCapa(c); e.target.disabled = false; return; }
+      L.grupo.visible = e.target.checked; renderer.shadowMap.needsUpdate = true;
+    });
+  }
+}
+for (const c of man.capas.filter(c => c.transparencia)) {
+  const f = document.createElement('div'); f.className = 'fila';
+  f.innerHTML = `<label for="op-${c.id}">${c.nombre}</label><input type="range" id="op-${c.id}" min="0" max="100" value="100"><span class="mb" id="opv-${c.id}">100 %</span>`;
+  $('#transp').appendChild(f);
+  f.querySelector('input').addEventListener('input', (e) => { setOpacidad(c.id, e.target.value / 100); });
+}
+function aplicarTransp(id) {
+  const L = IW.capas[id]; if (!L) return;
+  const rx = $('#rx').checked;
+  const op = rx && L.def.grupo !== 'redes' ? Math.min(L.opacidad, 0.07) : L.opacidad;
+  for (const m of L.mats) {
+    const b = m.userData.base;
+    if (op >= 0.999) { m.opacity = b.opacity; m.transparent = b.transparent; m.depthWrite = b.depthWrite; }
+    else { m.opacity = b.opacity * op; m.transparent = true; m.depthWrite = false; }
+    m.needsUpdate = true;
+  }
+  L.grupo.traverse(o => { if (o.isMesh) o.castShadow = op > 0.5 && L.def.grupo !== 'redes' && id !== 'SIT-TERRENO'; });
+  renderer.shadowMap.needsUpdate = true;
+}
+function setOpacidad(id, v) {
+  const L = IW.capas[id]; const s = document.getElementById('op-' + id);
+  if (s) { s.value = Math.round(v * 100); document.getElementById('opv-' + id).textContent = Math.round(v * 100) + ' %'; }
+  if (!L) return; L.opacidad = v; aplicarTransp(id);
+}
+IW.setOpacidad = setOpacidad;
+function aplicarRayos() {
+  const rx = $('#rx').checked;
+  for (const [id, L] of Object.entries(IW.capas)) {
+    if (L.def.grupo === 'redes' && L.def.rt2) { L.grupo.renderOrder = rx ? 10 : 0; continue; }
+    if (L.def.grupo === 'redes') {
+      const cs = new THREE.Color(L.def.color);
+      for (const m of L.mats) { const b = m.userData.base;          // en rayos X: cada red del color de su sistema
+        m.color.copy(rx ? cs : b.color); m.map = rx ? null : b.map; if (m.emissive) m.emissive.copy(rx ? cs.clone().multiplyScalar(0.35) : b.emissive); m.needsUpdate = true; }
+      L.grupo.renderOrder = rx ? 10 : 0;
+    } else if (L.def.grupo === 'mobiliario' || L.def.grupo === 'sitio') {      // en rayos X: fuera mobiliario, vegetacion, terreno y piscina
+      L.grupo.visible = rx ? false : document.getElementById('cb-' + id).checked;
+    } else aplicarTransp(id);
+  }
+  renderer.shadowMap.needsUpdate = true;
+}
+$('#rx').addEventListener('change', aplicarRayos);
+IW.rayosX = (v) => { $('#rx').checked = v; aplicarRayos(); };
+function aplicarPersiana() {
+  const e = $('#pers').value;
+  for (const L of Object.values(IW.capas)) L.grupo.traverse(o => { if (o.userData && o.userData.estados) o.visible = o.userData.estados.includes(e); });
+  renderer.shadowMap.needsUpdate = true;
+}
+$('#pers').value = man.persiana ? man.persiana.por_defecto : 'recogida';
+$('#pers').addEventListener('change', aplicarPersiana);
+$('#sombras').addEventListener('change', (e) => { sol.castShadow = e.target.checked; renderer.shadowMap.needsUpdate = true; });
+$('#hora').addEventListener('input', (e) => ponerSol(+e.target.value));
+
+// ---------------------------------------------------------------- colision y planta
+const CO = man.colision; let piso = null, bloq = null;
+function f16(h) { const s = (h & 0x8000) ? -1 : 1, e = (h >> 10) & 0x1f, f = h & 0x3ff;
+  if (e === 0) return s * Math.pow(2, -14) * (f / 1024); if (e === 31) return f ? NaN : s * Infinity; return s * Math.pow(2, e - 15) * (1 + f / 1024); }
+fetch(BASE + CO.archivo).then(r => r.arrayBuffer()).then(buf => {
+  const n = CO.nx * CO.ny; const h = new Uint16Array(buf, 0, n); piso = new Float32Array(n);
+  for (let i = 0; i < n; i++) piso[i] = f16(h[i]); bloq = new Uint8Array(buf, 2 * n, n);
+});
+function celda(xm, ym) { const i = Math.floor((xm - CO.x0) / CO.celda), j = Math.floor((ym - CO.y0) / CO.celda);
+  if (i < 0 || j < 0 || i >= CO.nx || j >= CO.ny) return -1; return j * CO.nx + i; }
+function pisoEn(X, Z) { if (!piso) return 0; const k = celda(X, -Z); return k < 0 ? 0 : piso[k]; }
+function libre(X, Z, yPie) {        // X, Z de three; la planta trabaja en (x, y) de Max = (X, -Z)
+  if (!piso) return true; const r = 0.18;
+  for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
+    const k = celda(X + dx, -(Z + dz)); if (k < 0) return false;
+    if (bloq[k]) return false; if (piso[k] - yPie > 0.42) return false;
+  }
+  return true;
+}
+const planta = new Image(); planta.src = BASE + CO.planta.archivo;
+const cp = $('#cplanta'), cx = cp.getContext('2d');
+planta.onload = () => { const pl = CO.planta; const w = 190; cp.width = w; cp.height = Math.round(w * (pl.y1 - pl.y0) / (pl.x1 - pl.x0)); };
+function dibujarPlanta() {
+  const pl = CO.planta; if (!planta.complete) return;
+  cx.drawImage(planta, 0, 0, cp.width, cp.height);
+  const xm = camara.position.x, ym = -camara.position.z;
+  const px = (xm - pl.x0) / (pl.x1 - pl.x0) * cp.width, py = (pl.y1 - ym) / (pl.y1 - pl.y0) * cp.height;
+  const d = new THREE.Vector3(); camara.getWorldDirection(d);
+  const ang = Math.atan2(-d.z, d.x);                     // en planta: x este, y norte (arriba)
+  cx.save(); cx.translate(Math.max(4, Math.min(cp.width - 4, px)), Math.max(4, Math.min(cp.height - 4, py))); cx.rotate(-ang);
+  cx.fillStyle = modo === 'pie' ? '#c0392b' : '#8a5a2b';
+  cx.beginPath(); cx.moveTo(9, 0); cx.lineTo(-5, 5); cx.lineTo(-2, 0); cx.lineTo(-5, -5); cx.closePath(); cx.fill(); cx.restore();
+}
+
+// ---------------------------------------------------------------- modos
+let modo = 'orbita'; const teclas = {};
+let yPie = 0, velY = 0;
+function ponerModo(m, en) {
+  modo = m; $('#b-orbita').classList.toggle('on', m === 'orbita'); $('#b-pie').classList.toggle('on', m === 'pie');
+  orbita.enabled = m === 'orbita'; $('#mira').style.display = m === 'pie' ? 'block' : 'none';
+  if (m === 'pie') {
+    camara.near = 0.05; camara.updateProjectionMatrix();
+    const p = en || { x: 4.5, z: -1.3, mira: -12 };     // comedor (Max x 4,5, y 1,3) mirando al norte: mesa, estar y sofa
+    yPie = pisoEn(p.x, p.z); camara.position.set(p.x, yPie + 1.6, p.z); camara.lookAt(p.x, yPie + 1.6, p.mira);
+    aviso('Clic en la vista para mirar con el ratón (Esc suelta). W A S D o flechas para caminar, Mayús para ir rápido. Los muros y muebles detienen el paso; las puertas se atraviesan.', 9000);
+  } else {
+    camara.near = 0.3; camara.updateProjectionMatrix(); if (pie.isLocked) pie.unlock();
+  }
+}
+let tAviso = null;
+function aviso(txt, ms = 6000) { const a = $('#aviso'); a.textContent = txt; a.classList.add('ver'); clearTimeout(tAviso); tAviso = setTimeout(() => a.classList.remove('ver'), ms); }
+IW.aviso = aviso;
+$('#b-orbita').onclick = () => { ponerModo('orbita'); vista('exterior'); };
+$('#b-pie').onclick = () => ponerModo('pie');
+lienzo.addEventListener('click', () => { if (modo === 'pie' && !pie.isLocked && !IW.sinBloqueo) pie.lock(); });
+addEventListener('keydown', e => { teclas[e.code] = true; }); addEventListener('keyup', e => { teclas[e.code] = false; });
+IW.modo = ponerModo; IW.teclas = teclas;
+const VISTAS = {
+  exterior: { pos: [-15, 7.5, 10], obj: [4, 1.2, -14] },
+  sur: { pos: [10, 6, 30], obj: [4, 1.5, -10] },
+  aerea: { pos: [32, 38, 6], obj: [4, 0, -17] },
+  norte: { pos: [18, 5, -58], obj: [4, 1.5, -20] },
+};
+function vista(n) { const v = VISTAS[n]; if (!v) return; ponerModo('orbita'); camara.position.set(...v.pos); orbita.target.set(...v.obj); orbita.update(); }
+IW.vista = vista;
+const NOMBRE_VISTA = { exterior: 'Exterior', sur: 'Sur', aerea: 'Aérea', norte: 'Norte' };
+for (const n of Object.keys(VISTAS)) for (const dest of ['#vistas', '#vistas2']) {
+  const b = document.createElement('button'); b.textContent = NOMBRE_VISTA[n] || n; b.onclick = () => vista(n); $(dest).appendChild(b); }
+
+function mover(dt) {
+  const rapido = teclas.ShiftLeft || teclas.ShiftRight ? 3.2 : 1.4;
+  let f = 0, s = 0;
+  if (teclas.KeyW || teclas.ArrowUp) f += 1; if (teclas.KeyS || teclas.ArrowDown) f -= 1;
+  if (teclas.KeyD || teclas.ArrowRight) s += 1; if (teclas.KeyA || teclas.ArrowLeft) s -= 1;
+  if (!pie.isLocked && !IW.sinBloqueo) { if (teclas.ArrowLeft) camara.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), 1.6 * dt); if (teclas.ArrowRight) camara.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), -1.6 * dt); s = 0; }
+  const fw = new THREE.Vector3(); camara.getWorldDirection(fw); fw.y = 0; fw.normalize();
+  const rt = new THREE.Vector3().crossVectors(fw, new THREE.Vector3(0, 1, 0));
+  const d = fw.multiplyScalar(f).add(rt.multiplyScalar(s)); if (d.lengthSq() > 0) d.normalize().multiplyScalar(rapido * dt);
+  const p = camara.position;
+  if (d.x && libre(p.x + d.x, p.z, yPie)) p.x += d.x;
+  if (d.z && libre(p.x, p.z + d.z, yPie)) p.z += d.z;
+  const fl = pisoEn(p.x, p.z);
+  if (fl > yPie) yPie = fl; else { velY -= 9.8 * dt; yPie = Math.max(fl, yPie + velY * dt); if (yPie === fl) velY = 0; }
+  p.y = yPie + 1.6;
+}
+
+// ---------------------------------------------------------------- ficha (clic)
+const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2(); let abajo = null;
+const caja = new THREE.Box3Helper(new THREE.Box3(), 0xff3b30); caja.visible = false; scene.add(caja);
+lienzo.addEventListener('pointerdown', e => { abajo = [e.clientX, e.clientY]; });
+lienzo.addEventListener('pointerup', e => {
+  if (!abajo || Math.hypot(e.clientX - abajo[0], e.clientY - abajo[1]) > 4) return;
+  if (modo === 'pie' && pie.isLocked) ptr.set(0, 0); else ptr.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1);
+  elegir(ptr);
+});
+function visibleArriba(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+function elegir(p) {
+  ray.setFromCamera(p, camActiva);
+  const obj = []; for (const L of Object.values(IW.capas)) if (L.grupo.visible) obj.push(L.grupo);
+  const hits = ray.intersectObjects(obj, true).filter(h => visibleArriba(h.object) && !(h.object.material.transparent && h.object.material.opacity < 0.2 && h.object.userData.capaId && IW.capas[h.object.userData.capaId].def.grupo !== 'redes'));
+  if (!hits.length) { $('#ficha').style.display = 'none'; caja.visible = false; return null; }
+  const h = hits[0], o = h.object; if (o.userData.rt2 && h.instanceId !== undefined) return fichaRT2(h);
+  let u = o.userData; let nombre = u.nombre, rango = null;
+  if (!nombre && u.tri0) {
+    const tri = h.faceIndex; let lo = 0, hi = u.tri0.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (u.tri0[m] <= tri) lo = m; else hi = m - 1; }
+    nombre = u.nombres[lo]; rango = [u.tri0[lo], lo + 1 < u.tri0.length ? u.tri0[lo + 1] : o.geometry.index.count / 3];
+    if (u.fichas && u.fichas[nombre]) u = Object.assign({ capaId: u.capaId, familia: u.familia }, u.fichas[nombre]);
+  }
+  // caja de lo elegido
+  const b = new THREE.Box3();
+  if (rango) { const ix = o.geometry.index, pos = o.geometry.attributes.position, v = new THREE.Vector3();
+    for (let t = rango[0] * 3; t < rango[1] * 3; t++) { v.fromBufferAttribute(pos, ix.getX(t)).applyMatrix4(o.matrixWorld); b.expandByPoint(v); } }
+  else if (o.isInstancedMesh && h.instanceId !== undefined) { const m = new THREE.Matrix4(); o.getMatrixAt(h.instanceId, m); o.geometry.computeBoundingBox(); b.copy(o.geometry.boundingBox).applyMatrix4(m).applyMatrix4(o.matrixWorld); }
+  else b.setFromObject(o);
+  caja.box.copy(b); caja.visible = true;
+  const L = IW.capas[u.capaId]; const sis = u.sistema || (L && L.def.sistema);
+  const prod = productoDe(nombre, u.tipo);
+  const fil = [['Pieza', nombre], ['Capa', L ? L.def.nombre : u.capa], ['Sistema', sis ? (man.capas.find(c => c.sistema === sis) || {}).sistema_nombre || sis : '—'],
+    ['Material', u.familia || '—'], ['Descripción', u.descripcion || '—'], ['Producto', prod ? `${prod.marca || ''} ${prod.modelo || ''}`.trim() + (prod.id ? ` <span style="color:var(--suave)">[${prod.id}]</span>` : '') + (prod.ficha_url ? ` · <a href="${prod.ficha_url}" target="_blank" rel="noopener">ficha ↗</a>` : '') : (IW.rt2 && IW.rt2.listo ? 'sin producto en el catálogo RT2' : 'cargando catálogo…')],
+    ['Medidas', `${(b.max.x - b.min.x).toFixed(3)} × ${(b.max.z - b.min.z).toFixed(3)} × ${(b.max.y - b.min.y).toFixed(3)} m`], ['Fuente', u.fuente || u.chat || '—']];
+  $('#ficha').innerHTML = '<div class="t"><span>Ficha</span><button id="ficha-x" title="Cerrar">×</button></div><table>' + fil.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>' +
+    '<div class="ayuda">Medidas: caja en x, y (norte), z de la pieza elegida.</div>' +
+    (window.parent !== window ? `<div style="margin-top:6px"><span class="enlace" id="ficha-prod">Ver en Productos →</span></div>` : '');
+  $('#ficha').style.display = 'block';
+  $('#ficha-x').onclick = () => { $('#ficha').style.display = 'none'; caja.visible = false; };
+  const fp = $('#ficha-prod'); if (fp) fp.onclick = () => avisarPadre({ virtu: 'ir', modulo: 'productos', pieza: nombre, producto: prod && prod.id || null, sistema: sis || null, tipo: u.tipo || null });
+  return { nombre, capa: u.capaId, sistema: sis, caja: [b.min.x, -b.max.z, b.min.y, b.max.x, -b.min.z, b.max.y] };
+}
+function productoDe(nombre, tipo) {
+  const e = IW.rt2 && IW.rt2.porObjeto[nombre];                // equipos del central que RT2 ligo a un producto del catalogo
+  if (e && IW.rt2.cat[e[0].producto]) return { ...IW.rt2.cat[e[0].producto], id: e[0].producto };
+  if (!catalogo) return null; return catalogo[nombre] || (tipo && catalogo[tipo]) || null; }
+IW.elegir = (x, y) => elegir(new THREE.Vector2(x, y));
+IW.cajaDe = (nombre) => {            // caja (Max: x, y, z) de un objeto por nombre, para los controles
+  const b = new THREE.Box3(); let ok = false;
+  for (const L of Object.values(IW.capas)) L.grupo.traverse(o => {
+    if (!o.isMesh) return; const u = o.userData;
+    if (u.nombre === nombre) { o.geometry.computeBoundingBox(); const m = new THREE.Matrix4();
+      if (o.isInstancedMesh) { o.getMatrixAt(0, m); b.union(o.geometry.boundingBox.clone().applyMatrix4(m).applyMatrix4(o.matrixWorld)); } else b.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); ok = true; }
+    else if (u.nombres) { const i = u.nombres.indexOf(nombre); if (i < 0) return;
+      const a = u.tri0[i], z = i + 1 < u.tri0.length ? u.tri0[i + 1] : o.geometry.index.count / 3; const ix = o.geometry.index, pos = o.geometry.attributes.position, v = new THREE.Vector3();
+      for (let t = a * 3; t < z * 3; t++) { v.fromBufferAttribute(pos, ix.getX(t)).applyMatrix4(o.matrixWorld); b.expandByPoint(v); } ok = true; }
+  });
+  return ok ? [b.min.x, -b.max.z, b.min.y, b.max.x, -b.min.z, b.max.y] : null;
+};
+
+// ---------------------------------------------------------------- bucle y medidas
+const reloj = new THREE.Clock(); let cuadros = 0, tVent = performance.now(), msAcum = 0;
+function bucle() {
+  const dt = Math.min(reloj.getDelta(), 0.1); const ta = performance.now();
+  if (IW.modoAxo) { IW.orbitaAxo.update(); if (maqueta) opacidadAristas(); } else if (modo === 'orbita') orbita.update(); else mover(dt);
+  renderer.render(scene, camActiva);
+  dibujarPlanta();
+  cuadros++; msAcum += performance.now() - ta;
+  const ahora = performance.now();
+  if (ahora - tVent > 1000) {
+    const inf = renderer.info; const mem = performance.memory ? performance.memory.usedJSHeapSize / 1e6 : null;
+    Object.assign(IW.stats, { fps: +(cuadros * 1000 / (ahora - tVent)).toFixed(1), ms_cpu: +(msAcum / cuadros).toFixed(2), llamadas: inf.render.calls,
+      triangulos: inf.render.triangles, geometrias: inf.memory.geometries, texturas: inf.memory.textures, heap_mb: mem && +mem.toFixed(0), modo });
+    $('#hud').textContent = `${IW.stats.fps} cps · ${inf.render.calls} llamadas · ${(inf.render.triangles / 1e6).toFixed(2)} M tri` + (mem ? ` · ${mem.toFixed(0)} MB JS` : '') +
+      (IW.stats.carga_inicial_s ? ` · carga ${IW.stats.carga_inicial_s}s / ${IW.stats.carga_total_s || '…'}s` : '');
+    cuadros = 0; msAcum = 0; tVent = ahora;
+  }
+  requestAnimationFrame(bucle);
+}
+IW.cuadro = () => { if (IW.modoAxo) { IW.orbitaAxo.update(); if (maqueta) opacidadAristas(); } else if (modo === 'orbita') orbita.update(); renderer.render(scene, camActiva); dibujarPlanta(); };
+addEventListener('resize', () => { camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); if (IW.modoAxo) IW.encuadrarAxo(); });
+
+// ---------------------------------------------------------------- Visor VIRTU: escenas, noche, panel y estado compartido
+function avisarPadre(msg) { if (window.parent !== window) window.parent.postMessage(msg, location.origin); }
+const ESTADO = IW.estado = { escena: 'arq', noche: false, persiana: $('#pers').value };
+function publicarEstado() { avisarPadre({ virtu: 'estado', estado: { ...ESTADO } }); }
+function capaVisible(id, v) {
+  const c = man.capas.find(x => x.id === id); if (!c) return;
+  c.visible = v; const cb = document.getElementById('cb-' + id); if (cb) cb.checked = v;
+  const L = IW.capas[id]; if (L) L.grupo.visible = v;
+}
+const REDES = man.capas.filter(c => c.grupo === 'redes').map(c => c.id);
+const TECHO = ['ARQ-CUBIERTA', 'ARQ-CIELO'].filter(id => man.capas.some(c => c.id === id));
+function ponerEscena(e) {
+  ESTADO.escena = e;
+  document.querySelectorAll('#escenas [data-esc]').forEach(b => b.classList.toggle('on', b.dataset.esc === e));
+  if (typeof quitarResalte === 'function') quitarResalte();
+  if (e === 'redes') { const RA = redesActivas(); for (const id of todasRedes()) if (!RA.includes(id)) capaVisible(id, false); for (const id of RA) capaVisible(id, true); IW.rayosX(true);
+    const faltan = RA.filter(id => !IW.capas[id]).length;
+    aviso(faltan ? `Las redes terminan de cargar (${faltan} de ${RA.length} en camino)…` : 'Arquitectura casi transparente; cada red con el color de su sistema. Clic sobre un tubo o un equipo: su ficha.'); }
+  else { IW.rayosX(false); for (const id of todasRedes()) capaVisible(id, false); for (const id of TECHO) capaVisible(id, true); if (typeof marca !== 'undefined') marca.visible = false; }
+  renderer.shadowMap.needsUpdate = true; publicarEstado();
+}
+IW.escena = ponerEscena;
+document.querySelectorAll('#escenas [data-esc]').forEach(b => b.onclick = () => ponerEscena(b.dataset.esc));
+// Noche aproximada: cielo oscuro, sin sol, relleno calido bajo y luminarias encendidas (emisivas). La noche de verdad sale de los 360 V-Ray (PI1).
+const DIA = { fondo: 0xc9dbe8, hemiI: hemi.intensity, ambI: amb.intensity, ambC: amb.color.getHex(), solI: sol.intensity, exp: renderer.toneMappingExposure };
+const NOCHE = { fondo: 0x0e1520, hemiI: 0.12, ambI: 0.22, ambC: 0x8fa6c9, solI: 0.0, exp: 1.1, lum: 0xffd29a, lumI: 2.2 };
+// a la noche: una luz puntual calida por luminaria (difusores agrupados a 2,5 m, maximo 14), sin sombras
+const lucesNoche = new THREE.Group(); scene.add(lucesNoche);
+function armarLucesNoche() {
+  lucesNoche.clear(); const L = IW.capas['MOB-LUMINARIAS']; if (!L) return 0;
+  const pts = [], m4 = new THREE.Matrix4(), b = new THREE.Box3(), c = new THREE.Vector3();
+  L.grupo.updateMatrixWorld(true);
+  L.grupo.traverse(o => { if (!o.isMesh || !/papel|opal|difus|bombill|lampar|luz/i.test(o.material.name)) return;
+    o.geometry.computeBoundingBox();
+    if (o.isInstancedMesh) for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m4); b.copy(o.geometry.boundingBox).applyMatrix4(m4).applyMatrix4(o.matrixWorld); pts.push(b.getCenter(c).clone()); }
+    else if (o.userData.tri0) {        // malla fundida por material: una caja por pieza (extras.tri0)
+      const u = o.userData, ix = o.geometry.index, pos = o.geometry.attributes.position, v = new THREE.Vector3(), nt = ix.count / 3;
+      for (let k = 0; k < u.tri0.length; k++) { const a = u.tri0[k], z = k + 1 < u.tri0.length ? u.tri0[k + 1] : nt; b.makeEmpty();
+        for (let t = a * 3; t < z * 3; t++) { v.fromBufferAttribute(pos, ix.getX(t)).applyMatrix4(o.matrixWorld); b.expandByPoint(v); }
+        pts.push(b.getCenter(c).clone()); } }
+    else { b.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); pts.push(b.getCenter(c).clone()); } });
+  const elegidos = [];
+  for (const p of pts) if (elegidos.length < 14 && elegidos.every(q => q.distanceTo(p) > 2.5)) elegidos.push(p);
+  for (const p of elegidos) { const l = new THREE.PointLight(0xffc68a, 40, 9, 2); l.position.copy(p); l.position.y -= 0.15; lucesNoche.add(l); }
+  return elegidos.length;
+}
+function aplicarNocheCapa(L) {
+  if (!L || L.def.id !== 'MOB-LUMINARIAS') return;
+  for (const m of L.mats) { const b = m.userData.base; if (!m.emissive || !/papel|opal|difus|bombill|lampar|luz/i.test(m.name)) continue;   // solo difusores (akari, opal)
+    if (IW.noche) { m.emissive.setHex(NOCHE.lum); m.emissiveIntensity = NOCHE.lumI; } else { if (b.emissive) m.emissive.copy(b.emissive); m.emissiveIntensity = 1; }
+    m.needsUpdate = true; }
+}
+function ponerNoche(n) {
+  IW.noche = ESTADO.noche = n; const P = n ? NOCHE : DIA;
+  scene.background.setHex(P.fondo); scene.fog.color.setHex(P.fondo);
+  hemi.intensity = P.hemiI; amb.intensity = P.ambI; amb.color.setHex(P.ambC); sol.intensity = P.solI;
+  sol.castShadow = !n && $('#sombras').checked; renderer.toneMappingExposure = P.exp;
+  for (const L of Object.values(IW.capas)) aplicarNocheCapa(L);
+  for (const m of IW.vegRelleno) m.emissiveIntensity = n ? VEG_RELLENO.noche : VEG_RELLENO.dia;
+  if (n) IW.lucesNoche = armarLucesNoche(); else lucesNoche.clear();
+  document.body.classList.toggle('noche', n); $('#b-noche').classList.toggle('on', n);
+  if (n) aviso('Noche aproximada del visor 3D: sirve para ubicarse. La noche con luz real llega con los 360 V-Ray.');
+  renderer.shadowMap.needsUpdate = true; publicarEstado();
+}
+IW.ponerNoche = ponerNoche;
+$('#b-noche').onclick = () => ponerNoche(!IW.noche);
+const ORDEN_PERS = ['recogida', 'abierta', 'cerrada'];
+function ponerPersiana(e) { $('#pers').value = e; ESTADO.persiana = e; $('#pers-t').textContent = e; aplicarPersiana(); publicarEstado(); }
+$('#b-pers').onclick = () => ponerPersiana(ORDEN_PERS[(ORDEN_PERS.indexOf($('#pers').value) + 1) % ORDEN_PERS.length]);
+$('#pers').addEventListener('change', () => ponerPersiana($('#pers').value));
+$('#b-panel').onclick = () => { const a = $('#panel').classList.toggle('abierto'); $('#b-panel').classList.toggle('on', a); };
+$('#ver-hud').addEventListener('change', e => $('#hud').classList.toggle('ver', e.target.checked));
+if (new URLSearchParams(location.search).has('hud')) { $('#ver-hud').checked = true; $('#hud').classList.add('ver'); }
+// el modulo padre (index.html del Visor VIRTU) puede pedir un estado: {virtu:'poner', escena, noche, persiana}
+addEventListener('message', ev => {
+  if (ev.origin !== location.origin || !ev.data || ev.data.virtu !== 'poner') return;
+  const d = ev.data;
+  if (d.persiana && ORDEN_PERS.includes(d.persiana)) ponerPersiana(d.persiana);
+  if (typeof d.noche === 'boolean' && d.noche !== !!IW.noche) ponerNoche(d.noche);
+  if (d.escena && d.escena !== ESTADO.escena) ponerEscena(d.escena);
+  if (d.mirar) mirarA(d.mirar);
+  if (d.resaltar) resaltarProducto(d.resaltar);
+});
+// llevar la camara a un punto de la planta (x este, y norte, en m de Max) y marcar la zona: lo usa "Ver en 3D" de los planos de detalle
+const marca = new THREE.Group(); marca.visible = false; scene.add(marca);   // caja terracota translucida con aristas
+const marcaCaja = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xE0702A, transparent: true, opacity: 0.28, depthWrite: false, depthTest: false }));
+const marcaAristas = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0xC0501A, transparent: true, depthTest: false }));
+marcaCaja.renderOrder = marcaAristas.renderOrder = 20; marca.add(marcaCaja, marcaAristas);
+function mirarA(m) {
+  ponerModo('orbita');
+  const t = new THREE.Vector3(m.x, 1.3, -m.y);
+  const lejos = m.caja ? Math.max(9, 1.6 * Math.hypot(m.caja[2] - m.caja[0], m.caja[3] - m.caja[1])) : 10;
+  camara.position.set(t.x - 0.75 * lejos, t.y + 0.55 * lejos, t.z + 0.45 * lejos); orbita.target.copy(t); orbita.update();
+  if (m.caja) { const w = Math.max(0.3, m.caja[2] - m.caja[0]), d = Math.max(0.3, m.caja[3] - m.caja[1]);
+    marca.position.set((m.caja[0] + m.caja[2]) / 2, 1.7, -(m.caja[1] + m.caja[3]) / 2); marca.scale.set(w, 3.8, d); marca.visible = true; } else marca.visible = false;
+  for (const id of TECHO) capaVisible(id, false); renderer.shadowMap.needsUpdate = true;    // sin cubierta ni cielo para ver adentro
+  aviso((m.etiqueta ? m.etiqueta + ': ' : '') + 'la caja terracota marca la zona del detalle (ubicación del índice de detalles). Sin cubierta para ver adentro; «Arquitectura» la devuelve.', 9000);
+}
+IW.mirarA = mirarA; IW.marca = marca;
+// caminar desde un punto de la planta (x este, y norte) mirando a un rumbo (0 norte, 90 este): lo usa "Ver en 3D" del 360
+IW.irA = (x, y, az) => { if (IW.modoAxo) modoAxo(false); ponerModo('pie', { x, z: -y, mira: -y - 1 });
+  const a = THREE.MathUtils.degToRad(az || 0); camara.lookAt(x + Math.sin(a), camara.position.y, -y - Math.cos(a)); };
+
+// ---------------------------------------------------------------- Axonometrias (Visor VIRTU E4): la misma escena con camara ortografica
+// Cada axonometria es una receta de capas (las que se ven, las que quedan en fantasma, separacion de la explotada); nada se renderiza aparte.
+const PAPEL = 0xF2EDE5, niebla = scene.fog;
+const camAxo = new THREE.OrthographicCamera(-10, 10, 10, -10, 1, 600);
+const orbitaAxo = new OrbitControls(camAxo, lienzo); orbitaAxo.enabled = false; orbitaAxo.enableDamping = true; orbitaAxo.screenSpacePanning = true;
+IW.orbitaAxo = orbitaAxo; IW.camAxo = camAxo;
+const NOMBRE_RED = { CAL: 'Calefacción', AIR: 'Aire acondicionado', ELE: 'Eléctrica', PLO: 'Plomería', GAS: 'Gas' };
+const FANTASMA = ['ARQ-LOSA', 'ARQ-MUROS', 'ARQ-ESTRUCTURA'];
+const AXOS = [
+  { id: 'conjunto', nombre: 'Conjunto', nota: 'la casa entera, con mobiliario y piscina', capas: ['ARQ-LOSA', 'ARQ-ESTRUCTURA', 'ARQ-MUROS', 'ARQ-CARPINTERIA', 'ARQ-PROTECCION-SOLAR', 'ARQ-CIELO', 'ARQ-CUBIERTA', 'SIT-PISCINA', 'MOB-MOBILIARIO', 'MOB-LUMINARIAS'] },
+  { id: 'interior', nombre: 'Interior sin cubierta', nota: 'muros, mobiliario y luminarias', capas: ['ARQ-LOSA', 'ARQ-ESTRUCTURA', 'ARQ-MUROS', 'ARQ-CARPINTERIA', 'MOB-MOBILIARIO', 'MOB-LUMINARIAS'] },
+  { id: 'estructura', nombre: 'Estructura', nota: 'losa, columnas-montante y vigas', capas: ['ARQ-LOSA', 'ARQ-ESTRUCTURA'] },
+  { id: 'cerramiento', nombre: 'Cerramiento', nota: 'muro cortina, carpinterías, persiana y listones', capas: ['ARQ-LOSA', 'ARQ-ESTRUCTURA', 'ARQ-MUROS', 'ARQ-CARPINTERIA', 'ARQ-PROTECCION-SOLAR'] },
+  { id: 'cubierta', nombre: 'Cubierta y cielo', nota: 'con la estructura que los sostiene', capas: ['ARQ-ESTRUCTURA', 'ARQ-CIELO', 'ARQ-CUBIERTA'], fantasma: ['ARQ-LOSA', 'ARQ-MUROS'] },
+  { id: 'explotada', nombre: 'Explotada', nota: 'de la losa a la cubierta, separadas', capas: ['ARQ-LOSA', 'ARQ-ESTRUCTURA', 'ARQ-MUROS', 'ARQ-CARPINTERIA', 'ARQ-PROTECCION-SOLAR', 'ARQ-CIELO', 'ARQ-CUBIERTA'],
+    explota: { 'ARQ-LOSA': 0, 'ARQ-ESTRUCTURA': 1, 'ARQ-MUROS': 2, 'ARQ-CARPINTERIA': 2, 'ARQ-PROTECCION-SOLAR': 2, 'ARQ-CIELO': 3, 'ARQ-CUBIERTA': 4 } },
+  { id: 'redes', nombre: 'Todas las redes', nota: 'cada sistema con su color', capas: REDES, fantasma: FANTASMA, colorRedes: true, encuadre: FANTASMA },
+  ...REDES.map(id => { const c = man.capas.find(x => x.id === id);
+    return { id: id.toLowerCase(), nombre: NOMBRE_RED[c.sistema] || c.sistema_nombre, nota: 'red ' + c.sistema, color: c.color, capas: [id], fantasma: FANTASMA, colorRedes: true, encuadre: FANTASMA }; }),
+].map(a => ({ ...a, capas: a.capas.filter(id => man.capas.some(c => c.id === id)) }));
+IW.AXOS = AXOS;
+let axoSep = 4.5, axoOrient = 'so', maqueta = false, axoTocado = false, tReenc = null;
+orbitaAxo.addEventListener('start', () => { axoTocado = true; });
+IW.reencuadrarAxo = () => { if (!axoTocado) { clearTimeout(tReenc); tReenc = setTimeout(encuadrarAxo, 120); } };   // mientras no se mueva la vista, se ajusta a lo que va llegando
+
+function opacidadCapa(L, op) {
+  for (const m of L.mats) { const b = m.userData.base;
+    if (op >= 0.999) { m.opacity = b.opacity; m.transparent = b.transparent; m.depthWrite = b.depthWrite; } else { m.opacity = b.opacity * op; m.transparent = true; m.depthWrite = false; }
+    m.needsUpdate = true; }
+  L.grupo.traverse(o => { if (o.isMesh) o.castShadow = op > 0.5 && L.def.grupo !== 'redes' && L.def.id !== 'SIT-TERRENO'; });
+}
+function colorRedesAxo(on) {
+  for (const id of REDES) { const L = IW.capas[id]; if (!L) continue; const cs = new THREE.Color(L.def.color);
+    for (const m of L.mats) { const b = m.userData.base; m.color.copy(on ? cs : b.color); m.map = on ? null : b.map;
+      if (m.emissive) m.emissive.copy(on ? cs.clone().multiplyScalar(0.35) : b.emissive); m.needsUpdate = true; } }
+}
+function ponerMaqueta(on) {           // maqueta blanca: sin texturas ni color; el vidrio, el follaje y las redes no cambian
+  maqueta = on;
+  for (const L of Object.values(IW.capas)) { if (L.def.grupo === 'redes') continue;
+    for (const m of L.mats) { const b = m.userData.base; if (m.alphaTest > 0) continue;
+      if (b.transparent && b.opacity < 0.9) {            // vidrio: claro y mas transparente en maqueta
+        if (on) { m.color.setHex(0xD3DCE0); m.opacity = Math.min(m.opacity, 0.3); } else { m.color.copy(b.color); if (!L.fantasma) m.opacity = b.opacity; }
+        m.needsUpdate = true; continue; }
+      if (on) { m.color.setHex(0xEEEAE3); m.map = null; } else { m.color.copy(b.color); m.map = b.map; }
+      if (m.userData.oculto) ponerOculto(m);   // las capas constructivas escondidas siguen siempre mas atras que la piel
+      else { m.polygonOffset = on; m.polygonOffsetFactor = 1; m.polygonOffsetUnits = 1; }
+      m.needsUpdate = true; } }
+  document.querySelectorAll('#axo-estilo button').forEach(b => b.classList.toggle('on', (b.dataset.v === 'maqueta') === on));
+  actualizarAristas(); renderer.shadowMap.needsUpdate = true;
+}
+function aplicarAxo(p, sinEncuadre) {
+  IW.axoActual = p; $('#rx').checked = false;
+  for (const c of man.capas) { const L = IW.capas[c.id]; if (!L) continue;
+    const en = p.capas.map(mapRed).includes(c.id), fa = (p.fantasma || []).map(mapRed).includes(c.id);
+    L.grupo.visible = en || fa; L.fantasma = fa && !en; opacidadCapa(L, L.fantasma ? 0.12 : 1);
+    L.grupo.position.y = p.explota && c.id in p.explota ? p.explota[c.id] * axoSep : 0; }
+  colorRedesAxo(!!p.colorRedes); if (maqueta) ponerMaqueta(true); else actualizarAristas();
+  aplicarPersiana(); renderer.shadowMap.needsUpdate = true;
+  document.querySelectorAll('#axo-items .ax').forEach(b => b.classList.toggle('on', b.dataset.id === p.id));
+  const act = document.querySelector(`#axo-items .ax[data-id="${p.id}"]`); if (act && !sinEncuadre) act.scrollIntoView({ block: 'nearest', inline: 'center' });
+  $('#axo-sep-l').style.display = p.explota ? '' : 'none';
+  if (!sinEncuadre) { axoTocado = false; encuadrarAxo(); avisarPadre({ virtu: 'axo', id: p.id }); }
+  const faltan = p.capas.map(mapRed).filter(id => !IW.capas[id]).length;
+  if (faltan && !sinEncuadre) aviso(`Faltan ${faltan} capas por bajar; entran solas al llegar.`, 4000);
+}
+const DIRS = { so: [-1, -1], se: [1, -1], ne: [1, 1], no: [-1, 1] };     // (x este, y norte) desde donde se mira
+function encuadrarAxo() {
+  const p = IW.axoActual; if (!p) return;
+  const b = new THREE.Box3(); for (const id of (p.encuadre || p.capas).map(mapRed)) { const L = IW.capas[id]; if (L && L.grupo.visible) b.expandByObject(L.grupo); }   // redes: se encuadra la casa (equipos lejanos quedan al alejar)
+  if (b.isEmpty()) b.set(new THREE.Vector3(-1, 0, -36), new THREE.Vector3(9, 4, 1));
+  const c = b.getCenter(new THREE.Vector3()); let d;
+  if (axoOrient === 'planta') { d = new THREE.Vector3(0, 1, 0); camAxo.up.set(0, 0, -1); }
+  else { const [sx, sy] = DIRS[axoOrient]; d = new THREE.Vector3(sx, 0, -sy).normalize(); d.y = 0.62; d.normalize(); camAxo.up.set(0, 1, 0); }
+  camAxo.position.copy(c).addScaledVector(d, 200); camAxo.lookAt(c); camAxo.updateMatrixWorld();
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < 8; i++) { const q = new THREE.Vector3(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(camAxo.matrixWorldInverse);
+    x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+  // la lista (izquierda) y la barra (abajo) tapan parte de la pantalla: el dibujo se centra en lo que queda libre
+  const mov = innerWidth <= 700, pl = mov ? 0 : 300 / innerWidth, pt = (mov ? 64 : 16) / innerHeight, pb = (mov ? 120 : 80) / innerHeight;
+  const W = (x1 - x0) * 1.08, H = (y1 - y0) * 1.08, asp = innerWidth / innerHeight;
+  let Wt = W / (1 - pl), Ht = H / (1 - pt - pb); if (Wt / Ht > asp) Ht = Wt / asp; else Wt = Ht * asp;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const L = cx - (pl + (1 - pl) / 2) * Wt, B = cy - (pb + (1 - pt - pb) / 2) * Ht;
+  camAxo.left = L; camAxo.right = L + Wt; camAxo.bottom = B; camAxo.top = B + Ht;
+  camAxo.zoom = 1; camAxo.near = 1; camAxo.far = 400; camAxo.updateProjectionMatrix();
+  orbitaAxo.target.copy(c); orbitaAxo.update();
+  document.querySelectorAll('#axo-vista button').forEach(bt => bt.classList.toggle('on', bt.dataset.v === axoOrient));
+}
+IW.aplicarAxo = aplicarAxo; IW.encuadrarAxo = encuadrarAxo;
+const previo = {};
+function modoAxo(on, id) {
+  if (on) {
+    const p = AXOS.find(a => a.id === id) || (IW.modoAxo && IW.axoActual) || AXOS[0];
+    if (IW.modoAxo) { aplicarAxo(p); return; }
+    ponerModo('orbita'); previo.noche = !!IW.noche; if (IW.noche) ponerNoche(false);
+    IW.modoAxo = true; camActiva = camAxo; orbita.enabled = false; orbitaAxo.enabled = true;
+    scene.background.setHex(PAPEL); scene.fog = null; ponerSol(30);
+    document.body.classList.add('axo'); marca.visible = false; caja.visible = false; $('#ficha').style.display = 'none';
+    aplicarAxo(p);
+    setTimeout(() => { if (IW.modoAxo) for (const c of man.capas) if (c.grupo === 'arquitectura' || c.id === 'SIT-PISCINA') pedirAristas(c.id); }, 1500);   // aristas en segundo plano: Maqueta sale al instante
+  } else {
+    if (!IW.modoAxo) return;
+    IW.modoAxo = false; IW.axoActual = null; camActiva = camara; orbitaAxo.enabled = false; orbita.enabled = true;
+    document.body.classList.remove('axo'); scene.fog = niebla; scene.background.setHex(DIA.fondo); ponerSol(+$('#hora').value);
+    if (maqueta) ponerMaqueta(false); colorRedesAxo(false);
+    for (const c of man.capas) { const L = IW.capas[c.id]; if (!L) continue; L.grupo.position.y = 0; L.fantasma = false; opacidadCapa(L, 1);
+      const cb = document.getElementById('cb-' + c.id); L.grupo.visible = cb ? cb.checked : c.visible; if (c.transparencia) aplicarTransp(c.id); }
+    ponerEscena(ESTADO.escena); aplicarPersiana(); if (previo.noche) ponerNoche(true);
+    renderer.shadowMap.needsUpdate = true;
+  }
+}
+IW.modoAxo = false; IW.ponerModoAxo = modoAxo;
+// lista y barra
+for (const a of AXOS) { const b = document.createElement('div'); b.className = 'ax'; b.dataset.id = a.id;
+  b.innerHTML = `<span class="pt" style="background:${a.color || (a.explota ? '#9A5A2E' : '#1E1C1A')}"></span><div><b>${a.nombre}</b><small>${a.nota || ''}</small></div>`;
+  b.onclick = () => aplicarAxo(a); $('#axo-items').appendChild(b); }
+document.querySelectorAll('#axo-vista button').forEach(b => b.onclick = () => { axoOrient = b.dataset.v; axoTocado = false; encuadrarAxo(); });
+document.querySelectorAll('#axo-estilo button').forEach(b => b.onclick = () => ponerMaqueta(b.dataset.v === 'maqueta'));
+$('#axo-sep').addEventListener('input', e => { axoSep = +e.target.value; aplicarAxo(IW.axoActual, true); });
+$('#axo-sep').addEventListener('change', () => encuadrarAxo());
+$('#axo-png').onclick = () => {           // imagen al doble de la pantalla, fondo papel, sin paneles
+  const pr = renderer.getPixelRatio(); renderer.setPixelRatio(2); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.needsUpdate = true;
+  renderer.render(scene, camAxo); const url = lienzo.toDataURL('image/png');
+  renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight);
+  const a = document.createElement('a'); a.href = url; a.download = `Casa_Wuehrer_axo_${IW.axoActual.id}_${axoOrient}${maqueta ? '_maqueta' : ''}.png`; a.click();
+};
+$('#axo-3d').onclick = () => { if (window.parent !== window) avisarPadre({ virtu: 'ir', modulo: '3d' }); else modoAxo(false); };
+if (new URLSearchParams(location.search).has('axo')) setTimeout(() => modoAxo(true, new URLSearchParams(location.search).get('axo')), 0);
+
+$('#rx').addEventListener('change', e => { ESTADO.escena = e.target.checked ? 'redes' : 'arq';
+  document.querySelectorAll('#escenas [data-esc]').forEach(b => b.classList.toggle('on', b.dataset.esc === ESTADO.escena)); });
+
+
+// ---------------------------------------------------------------- Aristas de la maqueta (Visor VIRTU E4b)
+// Se calculan en el navegador la primera vez que una capa se ve en maqueta (EdgesGeometry, angulo 35 grados) y quedan guardadas.
+// Las piezas instanciadas se hornean: la arista del prototipo se copia en cada instancia. Terreno, vegetacion y tornilleria no llevan aristas.
+const matArista = new THREE.LineBasicMaterial({ color: 0x3b3631, transparent: true, opacity: 0.62 });
+const SIN_ARISTAS = new Set(['SIT-TERRENO', 'SIT-VEGETACION', 'DET-FIJACIONES', 'MOB-MOBILIARIO', 'MOB-LUMINARIAS']);   // muebles: blancos, sin aristas (medio millon de segmentos que solo ensucian)
+const ARISTA_MIN = 0.03;          // segmentos de menos de 3 cm fuera
+const ARISTA_ANG = 35, ARISTAS = IW.aristas = { capas: {}, segmentos: 0, ms: 0, cola: [], trabajando: false };
+function aristasDeMalla(o) {
+  const e = new THREE.EdgesGeometry(o.geometry, ARISTA_ANG), src = e.attributes.position.array;
+  // GLB comprimidos (carpeta publicable): la geometria viene cuantizada y la pieza trae una escala para decodificarla;
+  // el minimo de 3 cm se mide en metros reales (sin compresion la escala es 1 y nada cambia)
+  o.updateWorldMatrix(true, false); const esc = o.matrixWorld.getMaxScaleOnAxis() || 1, minLocal = ARISTA_MIN / esc;
+  const largos = []; for (let k = 0; k < src.length; k += 6) { const dx = src[k + 3] - src[k], dy = src[k + 4] - src[k + 1], dz = src[k + 5] - src[k + 2];
+    if (dx * dx + dy * dy + dz * dz >= minLocal * minLocal) largos.push(k); }
+  const veces = o.isInstancedMesh ? o.count : 1, out = new Float32Array(largos.length * 6 * veces), M = new THREE.Matrix4(), v = new THREE.Vector3();
+  let w = 0;
+  for (let i = 0; i < veces; i++) { if (o.isInstancedMesh) o.getMatrixAt(i, M);        // instancias: se hornea una copia por instancia
+    for (const k of largos) for (const j of [k, k + 3]) { v.set(src[j], src[j + 1], src[j + 2]); if (o.isInstancedMesh) v.applyMatrix4(M); out[w++] = v.x; out[w++] = v.y; out[w++] = v.z; } }
+  e.dispose(); const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(out, 3));
+  const l = new THREE.LineSegments(geo, matArista); l.raycast = () => {}; l.name = 'aristas'; l.userData.esArista = true;
+  o.add(l); return geo.attributes.position.count / 2;
+}
+function trabajarAristas() {            // por tandas de ~12 ms para no congelar la pagina
+  if (!ARISTAS.cola.length) { ARISTAS.trabajando = false; if (ARISTAS.avisar) { aviso(`Aristas listas: ${ARISTAS.segmentos.toLocaleString('es')} segmentos en ${(ARISTAS.ms / 1000).toFixed(1)} s.`, 4000); ARISTAS.avisar = false; } actualizarAristas(); return; }
+  ARISTAS.trabajando = true; const t0 = performance.now();
+  while (ARISTAS.cola.length && performance.now() - t0 < 12) { const [id, o] = ARISTAS.cola.shift(); ARISTAS.segmentos += aristasDeMalla(o); ARISTAS.capas[id].hechas++; }
+  ARISTAS.ms += performance.now() - t0; actualizarAristas(); setTimeout(trabajarAristas, 0);
+}
+function pedirAristas(id) {
+  const L = IW.capas[id]; if (!L || SIN_ARISTAS.has(id) || L.def.grupo === 'redes' || ARISTAS.capas[id]) return;
+  const mallas = []; L.grupo.traverse(o => { if (o.isMesh && !o.userData.esArista) mallas.push(o); });
+  ARISTAS.capas[id] = { total: mallas.length, hechas: 0 };
+  for (const o of mallas) ARISTAS.cola.push([id, o]);
+  if (!ARISTAS.trabajando) { ARISTAS.avisar = true; aviso('Dibujando las aristas de la maqueta…', 3000); setTimeout(trabajarAristas, 0); }
+}
+function actualizarAristas() {            // aristas solo en maqueta, en axonometria y en capas llenas (no en las de fantasma)
+  for (const [id, L] of Object.entries(IW.capas)) {
+    const ver = maqueta && IW.modoAxo && L.grupo.visible && !L.fantasma && !SIN_ARISTAS.has(id) && L.def.grupo !== 'redes';
+    if (ver) pedirAristas(id);
+    L.grupo.traverse(o => { if (o.userData.esArista) o.visible = ver; });
+  }
+  renderer.shadowMap.needsUpdate = true;
+}
+IW.actualizarAristas = actualizarAristas;
+function opacidadAristas() {            // lejos, la trama se aclara; cerca, se marca (pixeles por metro en pantalla)
+  const ppm = innerHeight * camAxo.zoom / Math.max(0.01, camAxo.top - camAxo.bottom);
+  const op = Math.min(0.75, Math.max(0.12, (ppm - 10) / 45));
+  if (Math.abs(op - matArista.opacity) > 0.01) { matArista.opacity = op; }
+  return ppm;
+}
+IW.opacidadAristas = opacidadAristas;
+
+// ---------------------------------------------------------------- Redes RT2 (Visor VIRTU E5): las redes calculadas, dibujadas en el navegador desde su modelo de DATOS
+// Fuente: fichas/redes_rt2/redes_rt2_modelo_v1.json (tramos, accesorios, equipos, campo radiante) y salida/catalogo_productos_rt2.json. Se leen
+// en su carpeta (no se copian). Cada sistema es una capa RT2-<SIS> que funciona como las de IW1 (escenas, rayos X, axonometrias, ficha por clic).
+const RT2_URL = 'datos/redes_rt2_modelo_v1.json', CAT_URL = 'datos/catalogo_productos_rt2.json';
+const RT2 = IW.rt2 = { listo: false, cat: {}, porObjeto: {}, mallas: [] };
+IW.fuenteRedes = 'v3n';
+const ID_V3N = man.capas.filter(c => c.grupo === 'redes' && !c.rt2).map(c => c.id);
+function redesActivas() { return IW.fuenteRedes === 'rt2' && RT2.listo ? RT2.capas : ID_V3N; }
+function todasRedes() { return ID_V3N.concat(RT2.listo ? RT2.capas : []); }
+const mapRed = id => (IW.fuenteRedes === 'rt2' && RT2.listo && id.startsWith('RED-') && IW.capas['RT2-' + id.slice(4)]) ? 'RT2-' + id.slice(4) : id;
+IW.redesActivas = redesActivas;
+const X3 = p => new THREE.Vector3(p[0], p[2], -p[1]);          // (x este, y norte, z arriba) -> three
+function tono(hex, k) { const c = new THREE.Color(hex); return k >= 0 ? c.lerp(new THREE.Color(0xffffff), k) : c.multiplyScalar(1 + k); }
+const TONO_SUB = { 'RED-PLO-AC': -0.35, 'RED-PLO-DES': -0.45, 'RED-PLO-VEN': 0.35, 'RED-AIR-REF': -0.3, 'RED-AIR-CON': 0.4, 'RED-ELE-ACO': -0.35, 'RED-CAL-CAMPO': 0.25 };
+function serpentin(c) {          // campo radiante: la caja y el paso de D06 dan un serpentin esquematico (la malla real esta en RED-CAL de IW1)
+  const lo = c.caja_lo, hi = c.caja_hi, z = (lo[2] + hi[2]) / 2, largoX = hi[0] - lo[0] >= hi[1] - lo[1];
+  const [a0, a1, b0, b1] = largoX ? [lo[0], hi[0], lo[1], hi[1]] : [lo[1], hi[1], lo[0], hi[0]];
+  const n = Math.max(2, Math.floor((b1 - b0) / c.paso_m) + 1), out = [];
+  const P = (u, v) => largoX ? [u, v, z] : [v, u, z];
+  for (let i = 0; i < n; i++) { const v = b0 + (b1 - b0) * i / (n - 1), [s, e] = i % 2 ? [a1, a0] : [a0, a1];
+    out.push({ a: P(s, v), b: P(e, v) });
+    if (i < n - 1) out.push({ a: P(e, v), b: P(e, b0 + (b1 - b0) * (i + 1) / (n - 1)) }); }
+  return out.map((t, k) => ({ ...t, id: c.id + '-' + k, d_ext_m: c.d_ext_m, producto: c.producto, capa: c.capa, subsistema: c.subsistema, estado: c.estado + ' (esquema)', tipo_tramo: 'tubo', circuito: c.circuito, zona: c.zona, colector: c.colector, campo: true }));
+}
+function armarRT2(m, cat) {
+  RT2.modelo = m; RT2.cat = cat; RT2.capas = []; RT2.subs = Object.fromEntries(m.subsistemas.map(s => [s.id, s.nombre]));
+  for (const e of m.equipos) if (e.objeto_central) (RT2.porObjeto[e.objeto_central] = RT2.porObjeto[e.objeto_central] || []).push(e);
+  const geoT = new THREE.CylinderGeometry(1, 1, 1, 8, 1), geoA = new THREE.SphereGeometry(1, 10, 6), geoE = new THREE.BoxGeometry(1, 1, 1);
+  const Y = new THREE.Vector3(0, 1, 0), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3();
+  const filaRedes = document.querySelector('#capas-rt2');
+  for (const capa of m.capas) {
+    const id = 'RT2-' + capa.sistema, g = new THREE.Group(); g.name = id;
+    const tr = m.tramos.filter(t => t.capa === capa.id && t.fisico !== false).concat(...m.campo_radiante.filter(c => c.capa === capa.id).map(serpentin));
+    const ac = m.accesorios.filter(a => a.capa === capa.id), eq = m.equipos.filter(e => e.capa === capa.id), te = m.terminales.filter(t => t.capa === capa.id && t.pos);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0.05 });
+    const matE = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, transparent: true, opacity: 0.88 });
+    const mats = [mat, matE];
+    for (const mm of mats) mm.userData.base = { opacity: mm.opacity, transparent: mm.transparent, depthWrite: true, emissive: mm.emissive.clone(), color: mm.color.clone(), map: null };
+    const hacer = (geo, mtl, items, poner) => {
+      if (!items.length) return null;
+      const im = new THREE.InstancedMesh(geo, mtl, items.length); im.userData = { capaId: id, rt2: items, colores: [] };
+      items.forEach((it, i) => { poner(it); im.setMatrixAt(i, M); const col = tono(capa.color, TONO_SUB[it.subsistema] || 0); im.setColorAt(i, col); im.userData.colores.push(col); });
+      im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = false; im.receiveShadow = true;
+      g.add(im); RT2.mallas.push(im); return im;
+    };
+    const tubos = hacer(geoT, mat, tr, t => { const a = X3(t.a), b = X3(t.b), d = b.clone().sub(a), L = Math.max(d.length(), 0.001), r = Math.max((t.d_ext_m || 0.012) / 2, 0.004);
+      Q.setFromUnitVectors(Y, d.normalize()); M.compose(a.add(b).multiplyScalar(0.5), Q, S.set(r, L, r)); });
+    if (tubos) tubos.userData.esTubo = true;
+    hacer(geoA, mat, ac, a => { const r = Math.max(0.6 * (a.d_in || 0.5) * 0.0254 + 0.004, 0.008); M.compose(X3(a.pos), Q.identity(), S.set(r, r, r)); });
+    hacer(geoA, matE, te, t => M.compose(X3(t.pos), Q.identity(), S.set(0.035, 0.035, 0.035)));      // puntos de consumo: tomas, grifos, luminarias
+    hacer(geoE, matE, eq, e => { const lo = X3(e.caja_lo), hi = X3(e.caja_hi), c = lo.clone().add(hi).multiplyScalar(0.5);
+      M.compose(c, Q.identity(), S.set(Math.max(Math.abs(hi.x - lo.x), 0.02), Math.max(Math.abs(hi.y - lo.y), 0.02), Math.max(Math.abs(hi.z - lo.z), 0.02))); });
+    const def = { id, nombre: (NOMBRE_RED[capa.sistema] || capa.sistema_nombre) + ' · RT2', grupo: 'redes', color: capa.color, sistema: capa.sistema, sistema_nombre: capa.sistema_nombre,
+      inicial: false, visible: false, rt2: true, bytes: 0, bytes_texturas: 0 };
+    man.capas.push(def); g.visible = false; g.userData.capa = def; scene.add(g);
+    IW.capas[id] = { def, grupo: g, mats, opacidad: 1 }; RT2.capas.push(id);
+    const f = document.createElement('div'); f.className = 'fila';
+    f.innerHTML = `<input type="checkbox" id="cb-${id}"><span class="chip" style="background:${capa.color}"></span><label for="cb-${id}">${def.nombre}</label><span class="mb">${tr.length} tramos</span>`;
+    f.querySelector('input').addEventListener('change', e => { def.visible = e.target.checked; g.visible = e.target.checked; });
+    filaRedes.appendChild(f);
+  }
+  RT2.listo = true; IW.fuenteRedes = 'rt2'; document.querySelector('#fuente-rt2').checked = true; document.querySelector('#fuente-caja').style.display = '';
+  RT2.resumen = { tramos: m.tramos.length, accesorios: m.accesorios.length, equipos: m.equipos.length, terminales: m.terminales.length, campo: m.campo_radiante.length, productos: Object.keys(cat).length };
+  if (ESTADO.escena === 'redes') ponerEscena('redes');
+  if (IW.modoAxo && IW.axoActual) aplicarAxo(IW.axoActual);
+}
+function cargarRT2() {
+  Promise.all([fetch(RT2_URL).then(r => r.json()), fetch(CAT_URL).then(r => r.json())])
+    .then(([m, cat]) => armarRT2(m, cat)).catch(err => { RT2.error = String(err); });
+}
+function ponerFuente(f) {
+  IW.fuenteRedes = f; for (const id of todasRedes()) capaVisible(id, false);
+  if (IW.modoAxo && IW.axoActual) aplicarAxo(IW.axoActual); else if (ESTADO.escena === 'redes') ponerEscena('redes');
+  aviso(f === 'rt2' ? 'Redes calculadas por RT2 (PROPUESTA): tramos con su diámetro y producto; equipos como cajas.' : 'Redes del modelo v3n (D12 y lo de RT1 v1).', 5000);
+}
+document.querySelectorAll('input[name=fuente]').forEach(r => r.addEventListener('change', e => ponerFuente(e.target.value)));
+IW.ponerFuente = ponerFuente;
+// ficha de una pieza RT2
+const etiquetaEstado = e => ({ 'PROPUESTA': 'propuesta RT2', 'DATO-FABRICANTE': 'dato del fabricante' })[e] || e;
+function productoTexto(pid) { const p = RT2.cat[pid]; if (!p) return pid ? pid + ' (sin ficha en el catálogo)' : '—';
+  return `${p.marca || ''} ${p.modelo || ''}`.trim() + ` <span style="color:var(--suave)">[${pid}]</span>` + (p.ficha_url ? ` · <a href="${p.ficha_url}" target="_blank" rel="noopener">ficha ↗</a>` : ''); }
+function fichaRT2(h) {
+  const o = h.object, it = o.userData.rt2[h.instanceId], L = IW.capas[o.userData.capaId]; const b = new THREE.Box3();
+  let tipo, medidas;
+  if (it.a) { const r = Math.max((it.d_ext_m || 0.012) / 2, 0.004); b.setFromPoints([X3(it.a), X3(it.b)]).expandByScalar(r);
+    tipo = (it.tipo_tramo || 'tramo') + (it.rol ? ' · ' + it.rol : '') + (it.soporte ? ' · por ' + it.soporte : '') + (it.campo ? ' · circuito ' + it.circuito + ' (' + it.zona + ')' : '');
+    medidas = `Ø ext ${(it.d_ext_m * 1000).toFixed(1)} mm · ${(it.largo_m || X3(it.a).distanceTo(X3(it.b))).toFixed(2)} m`; }
+  else if (it.caja_lo) { b.setFromPoints([X3(it.caja_lo), X3(it.caja_hi)]); tipo = 'equipo' + (it.objeto_central ? ' · pieza ' + it.objeto_central : '');
+    medidas = (it.dims_m || []).map(v => (v * 1000).toFixed(0)).join(' × ') + ' mm'; }
+  else if (it.punto !== undefined) { b.setFromCenterAndSize(X3(it.pos), new THREE.Vector3(0.07, 0.07, 0.07)); tipo = 'punto de consumo · ' + it.tipo + (it.circuito ? ' · circuito ' + it.circuito : ''); medidas = 'marca de 7 cm (el aparato está en el modelo)'; }
+  else { const r = 0.6 * (it.d_in || 0.5) * 0.0254 + 0.004; b.setFromCenterAndSize(X3(it.pos), new THREE.Vector3(2 * r, 2 * r, 2 * r)); tipo = 'accesorio · ' + it.tipo; medidas = `Ø ${it.d_in}"`; }
+  caja.box.copy(b); caja.visible = true;
+  const fil = [['Pieza', it.id], ['Red', (L ? L.def.nombre : '') + (it.subsistema ? ' · ' + (RT2.subs[it.subsistema] || it.subsistema) : '')], ['Tipo', tipo], ['Producto', productoTexto(it.producto)],
+    ['Medidas', medidas], ['Estado', etiquetaEstado(it.estado)]];
+  if (it.no_cubre) fil.push(['Ojo', it.no_cubre]);
+  $('#ficha').innerHTML = '<div class="t"><span>Ficha · redes RT2</span><button id="ficha-x" title="Cerrar">×</button></div><table>' + fil.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>' +
+    (window.parent !== window && it.producto ? `<div style="margin-top:6px"><span class="enlace" id="ficha-prod">Ver en Productos →</span></div>` : '');
+  $('#ficha').style.display = 'block';
+  $('#ficha-x').onclick = () => { $('#ficha').style.display = 'none'; caja.visible = false; };
+  const fp = $('#ficha-prod'); if (fp) fp.onclick = () => avisarPadre({ virtu: 'ir', modulo: 'productos', producto: it.producto, pieza: it.id });
+  return { nombre: it.id, capa: o.userData.capaId, producto: it.producto };
+}
+IW.fichaRT2 = fichaRT2;
+// resaltar todas las piezas de un producto (lo pide el modulo Productos): las demas quedan tenues
+function resaltarProducto(pid) {
+  if (!RT2.listo) { setTimeout(() => resaltarProducto(pid), 300); return; }
+  if (IW.modoAxo) modoAxo(false);
+  if (IW.fuenteRedes !== 'rt2') { document.querySelector('#fuente-rt2').checked = true; IW.fuenteRedes = 'rt2'; }
+  ponerEscena('redes');
+  quitarResalte();
+  const b = new THREE.Box3(), M = new THREE.Matrix4(), bi = new THREE.Box3(), resalte = new THREE.Color(0xff5a00); let n = 0;
+  const P0 = new THREE.Vector3(), Q0 = new THREE.Quaternion(), S0 = new THREE.Vector3();
+  for (const im of RT2.mallas) { im.geometry.computeBoundingBox(); im.userData.m0 = im.userData.m0 || im.instanceMatrix.array.slice();
+    im.userData.rt2.forEach((it, i) => { const si = it.producto === pid;
+      im.setColorAt(i, si ? resalte : im.userData.colores[i].clone().lerp(new THREE.Color(0xd9d4cc), 0.75));
+      if (si) { n++; im.getMatrixAt(i, M); bi.copy(im.geometry.boundingBox).applyMatrix4(M); b.union(bi);
+        M.decompose(P0, Q0, S0);            // mientras dura el resalte, los tubos finos se ven de 5 cm y los puntos de 8 cm
+        if (im.userData.esTubo) { S0.x = S0.z = Math.max(S0.x, 0.025); } else if (im.geometry.type === 'SphereGeometry') S0.setScalar(Math.max(S0.x, 0.04));
+        M.compose(P0, Q0, S0); im.setMatrixAt(i, M); } });
+    im.instanceColor.needsUpdate = true; im.instanceMatrix.needsUpdate = true; }
+  RT2.resaltado = pid;
+  // las piezas del central (equipos de D12) con ese producto
+  const p = RT2.cat[pid] || {};
+  if (n) { const c = b.getCenter(new THREE.Vector3()), r = Math.max(4, b.getSize(new THREE.Vector3()).length() * 0.62);
+    ponerModo('orbita'); camara.position.set(c.x - 0.7 * r, c.y + 0.75 * r, c.z + 0.6 * r); orbita.target.copy(c); orbita.update(); }
+  aviso(n ? `${n} piezas de ${(p.marca || '') + ' ' + (p.modelo || pid)} en naranja. «Arquitectura» o «Redes» quita el resalte.` : `${p.modelo || pid}: no tiene piezas dibujadas en las redes de RT2.`, 9000);
+  return n;
+}
+function quitarResalte() { if (!RT2.resaltado) return; RT2.resaltado = null;
+  for (const im of RT2.mallas) { im.userData.colores.forEach((c, i) => im.setColorAt(i, c)); im.instanceColor.needsUpdate = true;
+    if (im.userData.m0) { im.instanceMatrix.array.set(im.userData.m0); im.instanceMatrix.needsUpdate = true; } } }
+IW.resaltarProducto = resaltarProducto;
+
+// carga inicial (con progreso) y luego el resto en segundo plano
+const ini = man.capas.filter(c => c.inicial), resto = man.capas.filter(c => !c.inicial && c.visible);
+for (const id of REDES) capaVisible(id, false);      // escena inicial "Arquitectura": las redes bajan en segundo plano pero quedan ocultas
+$('#pers-t').textContent = $('#pers').value;
+const prog = {};
+$('#carga-d').textContent = `${ini.length} capas, ${(man.pesos.inicial_mb).toFixed(0)} MB`;
+await Promise.all(ini.map(c => cargarCapa(c, (e) => { prog[c.id] = e.loaded; const s = Object.values(prog).reduce((a, b) => a + b, 0);
+  $('#barra i').style.width = Math.min(100, 100 * s / pesoIni) + '%'; })));
+renderer.shadowMap.needsUpdate = true;
+requestAnimationFrame(bucle);
+IW.stats.carga_inicial_s = +((performance.now() - t0) / 1000).toFixed(1);
+$('#carga').style.display = 'none';
+cargarRT2();                // redes RT2 en paralelo con el resto de las capas
+for (const c of resto) await cargarCapa(c);
+IW.stats.carga_total_s = +((performance.now() - t0) / 1000).toFixed(1);
+IW.listo = true;
+</script>
+</body>
+</html>

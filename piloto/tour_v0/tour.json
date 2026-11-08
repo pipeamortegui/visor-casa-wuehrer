@@ -1,0 +1,165 @@
+{
+ "titulo": "Casa Wuehrer",
+ "subtitulo": "Prototipo PI1 (7-nov-2026): un render V-Ray a 2000 px, pases de luz mezclados en el navegador",
+ "cielo": {
+  "dia": "cielo/dia.jpg",
+  "noche": "cielo/noche.jpg",
+  "signo": 1,
+  "offD": 0.0,
+  "offN": 0.0,
+  "ajuste": {
+   "dia": {
+    "err": null,
+    "signo": 1,
+    "off": 0.0,
+    "pix": 0
+   },
+   "noche": {
+    "err": null,
+    "signo": 1,
+    "off": 0.0,
+    "pix": 0
+   }
+  }
+ },
+ "mezclas": {
+  "dia+": {
+   "sol": [
+    1,
+    1,
+    1
+   ],
+   "ent": [
+    1,
+    1,
+    1
+   ],
+   "int_d": [
+    1,
+    1,
+    1
+   ],
+   "si_int": [
+    1,
+    1,
+    1
+   ],
+   "si_ext": [
+    1,
+    1,
+    1
+   ],
+   "cieloD": 1
+  },
+  "dia-": {
+   "sol": [
+    1,
+    1,
+    1
+   ],
+   "ent": [
+    1,
+    1,
+    1
+   ],
+   "si_ext": [
+    1,
+    1,
+    1
+   ],
+   "cieloD": 1
+  },
+  "noche+": {
+   "ent": [
+    0.19,
+    0.5714,
+    1.1486
+   ],
+   "int_n": [
+    1,
+    1,
+    1
+   ],
+   "si_int": [
+    1.7143,
+    1.7143,
+    1.7143
+   ],
+   "si_ext": [
+    0.1,
+    0.1,
+    0.1
+   ],
+   "cieloN": 1
+  },
+  "noche-": {
+   "ent": [
+    0.19,
+    0.5714,
+    1.1486
+   ],
+   "si_ext": [
+    0.1,
+    0.1,
+    0.1
+   ],
+   "cieloN": 1
+  }
+ },
+ "puntos": [
+  {
+   "clave": "estar",
+   "nombre": "estar y comedor",
+   "lon0": 0,
+   "geometrias": [
+    {
+     "clave": "R",
+     "etiqueta": "Persiana recogida",
+     "dir": "pan/estar/R/",
+     "pases": {
+      "sol": {
+       "archivo": "sol.jpg",
+       "escala": 0.808205
+      },
+      "ent": {
+       "archivo": "ent.jpg",
+       "escala": 0.54244
+      },
+      "int_d": {
+       "archivo": "int_d.jpg",
+       "escala": 4.88351
+      },
+      "si_int": {
+       "archivo": "si_int.jpg",
+       "escala": 0.66719
+      },
+      "si_ext": {
+       "archivo": "si_ext.jpg",
+       "escala": 0.0001
+      },
+      "int_n": {
+       "archivo": "int_n.jpg",
+       "escala": 9.465755
+      },
+      "alfa": {
+       "archivo": "alfa.jpg",
+       "escala": 1
+      }
+     }
+    },
+    {
+     "clave": "B",
+     "etiqueta": "Estado B (prueba)",
+     "dir": "pan/estar/B/",
+     "pases": {
+      "fijo": {
+       "archivo": "fijo.jpg",
+       "escala": 1
+      }
+     },
+     "nota": "Estado B de PRUEBA: otra corrida del mismo punto (L2, luz interior x2), imagen fija sin pases. Solo prueba el cambio de juego de imagenes; no es una persiana."
+    }
+   ]
+  }
+ ]
+}

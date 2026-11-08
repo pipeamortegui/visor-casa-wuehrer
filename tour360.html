@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor VIRTÙ · 360</title>
+<!-- Visor VIRTU v1, etapa E3 (PRB-0002, 7-nov-2026): recorrido 360. Lee tour360.json (lo escribe fichas/interactivo/visor_virtu_v1/preparar_360.py).
+     Puntos "pases": mezcla de pases de luz V-Ray en el navegador (shader del prototipo tour_v0 de PI1, sin cambios en la formula), con dia/noche y luces.
+     Puntos "fijo": un 360 V-Ray de dia. Saltos por la planta y por marcas en el piso. three.js 0.160.0 fijo (jsdelivr), como el resto del visor. -->
+<style>
+:root { --papel:#F2EDE5; --panel:rgba(242,237,229,.94); --tinta:#1E1C1A; --gris:#7D776F; --linea:#D6CDBF; --terra:#9A5A2E; }
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; overflow:hidden; background:#111; color:var(--tinta); font:13px/1.4 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+#vista { position:fixed; inset:0; touch-action:none; cursor:grab; display:block; width:100%; height:100%; }
+.caja { background:var(--panel); border:1px solid var(--linea); box-shadow:0 2px 12px rgba(0,0,0,.18); }
+button { font:inherit; border:1px solid var(--linea); background:#fff; color:var(--tinta); border-radius:16px; padding:5px 12px; cursor:pointer; white-space:nowrap; }
+button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } button:disabled { opacity:.38; cursor:default; }
+#cab { position:fixed; left:10px; top:10px; border-radius:12px; padding:8px 12px; max-width:min(520px, calc(100% - 20px)); }
+#cab b { font-size:15px; } #cab .nota { font-size:11.5px; color:var(--gris); margin-top:2px; }
+#estados { position:fixed; left:50%; bottom:14px; transform:translateX(-50%); display:flex; gap:6px; align-items:center; border-radius:28px; padding:6px 8px; flex-wrap:wrap; justify-content:center; max-width:calc(100% - 20px); }
+#estados .et { font-size:11px; color:var(--gris); margin:0 2px 0 6px; } #estados .sep { width:1px; height:22px; background:var(--linea); }
+#estados .acc { background:var(--terra); color:#fff; border-color:var(--terra); }
+#plano { position:fixed; right:10px; bottom:10px; border-radius:12px; padding:6px; }
+#plano canvas { display:block; cursor:pointer; }
+#plano .t { font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--terra); font-weight:700; padding:2px 4px 4px; display:flex; justify-content:space-between; }
+#lista { position:fixed; right:10px; top:10px; border-radius:12px; padding:6px; max-height:calc(100% - 330px); overflow:auto; width:200px; }
+.pt { display:flex; gap:7px; align-items:center; padding:5px 6px; border-radius:7px; cursor:pointer; font-size:12px; }
+.pt:hover { background:rgba(0,0,0,.05); } .pt.on { background:#fff; outline:1px solid var(--linea); }
+.pt img { width:54px; height:27px; object-fit:cover; border-radius:3px; flex:none; }
+.pt small { display:block; color:var(--gris); font-size:10.5px; }
+.pt .d { width:8px; height:8px; border-radius:50%; flex:none; background:#B9B2A7; } .pt .d.pases { background:var(--terra); }
+#etiquetas { position:fixed; inset:0; pointer-events:none; }
+.salto { position:absolute; transform:translate(-50%, -50%); pointer-events:auto; cursor:pointer; text-align:center; }
+.salto .anillo { width:34px; height:34px; border-radius:50%; border:3px solid #fff; background:rgba(154,90,46,.55); box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.35); margin:0 auto; transition:transform .15s; }
+.salto:hover .anillo { transform:scale(1.15); background:rgba(154,90,46,.85); }
+.salto span { display:inline-block; margin-top:4px; font-size:11.5px; color:#fff; background:rgba(30,28,26,.72); padding:1px 7px; border-radius:8px; white-space:nowrap; }
+#carga { position:fixed; inset:0; display:grid; place-items:center; color:#ddd; background:#111; font-size:13px; }
+#fundido { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity .25s; }
+@media (max-width:760px) {
+  #lista { display:none; } #plano { right:8px; top:8px; bottom:auto; padding:4px; } #plano canvas { width:96px; height:auto; } #plano .t { font-size:9px; }
+  #cab { top:8px; left:8px; max-width:calc(100% - 128px); padding:6px 10px; } #cab b { font-size:13px; }
+  #cab .nota { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; font-size:10.5px; }
+  #estados { bottom:8px; gap:4px; padding:5px 6px; } #estados .et, #estados .sep, #estados .solo-escritorio { display:none; }
+  #estados button { padding:5px 10px; font-size:12px; }
+  .salto .anillo { width:28px; height:28px; } .salto span { font-size:10.5px; }
+}
+</style>
+</head>
+<body>
+<canvas id="vista"></canvas>
+<div id="etiquetas"></div>
+<div id="fundido"></div>
+<div id="cab" class="caja"><b id="t-nombre">—</b><div class="nota" id="t-nota"></div></div>
+<div id="lista" class="caja"></div>
+<div id="plano" class="caja"><div class="t"><span>Planta</span><span id="t-n"></span></div><canvas id="cplano" width="200" height="290"></canvas></div>
+<div id="estados" class="caja">
+  <span class="et">Hora</span><button data-k="hora" data-v="dia">Día</button><button data-k="hora" data-v="noche">Noche</button>
+  <span class="sep"></span>
+  <span class="et">Luces</span><button data-k="luces" data-v="1">Encendidas</button><button data-k="luces" data-v="0">Apagadas</button>
+  <span class="sep"></span>
+  <span class="et">Persiana</span><button class="solo-escritorio" disabled title="Por ahora todos los 360 son con la persiana recogida (Pipe: «Recogida en todos»)">Recogida</button>
+  <span class="sep"></span>
+  <button id="b-3d" class="acc" title="Caminar en el 3D desde este punto">Ver en 3D</button>
+</div>
+<div id="carga">cargando el recorrido…</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const $ = s => document.querySelector(s);
+const T3 = window.T3 = { listo: false };
+const t0 = performance.now();
+// E3b (Pipe, 8-nov: «integremos los ultimos 360 en 4k al visor»): los 10 puntos a 4096 px (preparar_360_4k.py). ?tour=v1 vuelve al recorrido de 2000 px; ?res=2k o ?res=4k fuerzan la resolucion
+const QS = new URLSearchParams(location.search);
+const tour = await (await fetch(QS.get('tour') === 'v1' ? 'tour360.json' : 'tour360_4k.json')).json();
+const PUNTOS = tour.puntos.filter(p => p.tipo !== 'falta');
+const est = { hora: 'dia', luces: '1', punto: null };
+function avisarPadre(m) { if (parent !== window) parent.postMessage(m, location.origin); }
+
+// ---------------------------------------------------------------- render
+const lienzo = $('#vista');
+const ren = new THREE.WebGLRenderer({ canvas: lienzo, antialias: false, preserveDrawingBuffer: true });
+ren.setPixelRatio(Math.min(devicePixelRatio, 2));
+ren.outputColorSpace = THREE.LinearSRGBColorSpace;   // la mezcla y la gamma se hacen en el shader (como tour_v0 de PI1)
+const escena = new THREE.Scene(), cam = new THREE.PerspectiveCamera(75, 1, 0.1, 50);
+const carg = new THREE.TextureLoader(), cache = {};
+function tex(ruta) {
+  if (!cache[ruta]) cache[ruta] = new Promise((ok, mal) => carg.load(ruta, t => { t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = false;
+    t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; ok(t); }, undefined, mal));
+  return cache[ruta];
+}
+// 4K: primero la version de 2048 px (al instante), luego la de 4096 con mipmaps. En celulares se queda en 2048 (pantalla chica, memoria justa).
+// Solo se guardan los ultimos 3 panoramas 4K en la tarjeta: cada uno ocupa unos 45 MB de memoria grafica.
+const USA4K = QS.get('res') === '4k' || (QS.get('res') !== '2k' && ren.capabilities.maxTextureSize >= 4096 && !(matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600));
+const cache4k = new Map(); let ficha4k = 0;
+function tex4k(ruta) {
+  if (cache4k.has(ruta)) { const v = cache4k.get(ruta); cache4k.delete(ruta); cache4k.set(ruta, v); return v; }
+  const v = new Promise((ok, mal) => carg.load(ruta, t => { t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; ok(t); }, undefined, mal));
+  cache4k.set(ruta, v);
+  while (cache4k.size > 3) { const [k, viejo] = cache4k.entries().next().value; cache4k.delete(k); viejo.then(t => t.dispose()); }
+  return v;
+}
+function pedir4k(p) { T3.res = '2k'; if (!p.imagen_2k || !USA4K) return; const tok = ficha4k; tex4k(p.imagen).then(t => { if (tok === ficha4k) { uni.t_fijo.value = t; T3.res = '4k'; } }); }
+// shader de PI1 (tour_v0): suma lineal de pases guardados como (x/escala)^(1/2,2); cielo por la mascara alfa. "fijo" = una imagen sola.
+const PASES = ['sol', 'ent', 'int_d', 'int_n', 'si_int', 'si_ext', 'alfa', 'fijo'];
+const uni = { gamma: { value: 2.2 }, expo: { value: 1.0 }, cieloD: { value: null }, cieloN: { value: null }, offD: { value: 0 }, offN: { value: 0 }, signo: { value: 1 },
+  fijoOn: { value: 1 }, kCieloD: { value: 0 }, kCieloN: { value: 0 } };
+for (const p of PASES) { uni['t_' + p] = { value: null }; uni['s_' + p] = { value: 1 }; uni['k_' + p] = { value: new THREE.Vector3() }; }
+const frag = `precision highp float; varying vec2 vUv;
+uniform float gamma, expo, offD, offN, signo, fijoOn, kCieloD, kCieloN; uniform sampler2D cieloD, cieloN;
+${PASES.map(p => `uniform sampler2D t_${p}; uniform float s_${p}; uniform vec3 k_${p};`).join('\n')}
+vec3 lin(sampler2D t, float s) { return pow(texture2D(t, vUv).rgb, vec3(gamma)) * s; }
+void main() { vec3 c;
+  if (fijoOn > 0.5) { c = lin(t_fijo, 1.0); }
+  else { c = k_sol * lin(t_sol, s_sol) + k_ent * lin(t_ent, s_ent) + k_int_d * lin(t_int_d, s_int_d) + k_int_n * lin(t_int_n, s_int_n)
+      + k_si_int * lin(t_si_int, s_si_int) + k_si_ext * lin(t_si_ext, s_si_ext);
+    float a = texture2D(t_alfa, vUv).r; float u = fract(signo * vUv.x + offD); float un = fract(signo * vUv.x + offN);
+    vec3 cd = pow(texture2D(cieloD, vec2(u, vUv.y)).rgb, vec3(2.2)); vec3 cn = pow(texture2D(cieloN, vec2(un, vUv.y)).rgb, vec3(2.2));
+    c += (1.0 - a) * (kCieloD * cd + kCieloN * cn); }
+  gl_FragColor = vec4(pow(clamp(c * expo, 0.0, 1.0), vec3(1.0 / 2.2)), 1.0); }`;
+const vert = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const geo = new THREE.SphereGeometry(10, 96, 48); geo.scale(-1, 1, 1);
+escena.add(new THREE.Mesh(geo, new THREE.ShaderMaterial({ uniforms: uni, vertexShader: vert, fragmentShader: frag })));
+const tours = {};      // tour.json de PI1 por carpeta
+async function tourPI1(dir) { if (!tours[dir]) tours[dir] = fetch(dir + 'tour.json').then(r => r.json()); return tours[dir]; }
+
+// ---------------------------------------------------------------- vista: lon 180 = centro del panorama = hacia donde mira la camara de V-Ray
+let lon = 180, lat = 0, fov = 75, arr = null;
+lienzo.addEventListener('pointerdown', e => { arr = [e.clientX, e.clientY, lon, lat]; lienzo.setPointerCapture(e.pointerId); lienzo.style.cursor = 'grabbing'; });
+lienzo.addEventListener('pointermove', e => { if (!arr) return; const f = fov / lienzo.clientHeight; lon = arr[2] - (e.clientX - arr[0]) * f; lat = Math.max(-85, Math.min(85, arr[3] + (e.clientY - arr[1]) * f)); });
+lienzo.addEventListener('pointerup', () => { arr = null; lienzo.style.cursor = 'grab'; });
+lienzo.addEventListener('wheel', e => { fov = Math.max(30, Math.min(100, fov + e.deltaY * 0.05)); e.preventDefault(); }, { passive: false });
+function rumbo() { return ((est.punto.mira_az + (lon - 180)) % 360 + 360) % 360; }      // rumbo de la vista (0 norte, 90 este)
+function dirDe(az, elev) {          // direccion en la esfera para un rumbo de planta y una elevacion
+  const L = THREE.MathUtils.degToRad(180 + az - est.punto.mira_az), e = THREE.MathUtils.degToRad(elev);
+  return new THREE.Vector3(Math.cos(L) * Math.cos(e), Math.sin(e), Math.sin(L) * Math.cos(e));
+}
+
+// ---------------------------------------------------------------- estados y puntos
+async function ponerPunto(clave, sinFundido) {
+  const p = PUNTOS.find(x => x.clave === clave) || PUNTOS[0];
+  if (!sinFundido && est.punto) { $('#fundido').style.opacity = 1; await new Promise(r => setTimeout(r, 220)); }
+  const rumboAnterior = est.punto ? rumbo() : null;
+  est.punto = p;
+  if (p.tipo === 'pases') {
+    const t = await tourPI1(p.tour); const P = t.puntos.find(x => x.clave === p.clave); const G = P.geometrias[0];
+    const lista = Object.entries(G.pases); const ts = await Promise.all(lista.map(([k, d]) => tex(p.tour + G.dir + d.archivo)));
+    lista.forEach(([k, d], i) => { uni['t_' + k].value = ts[i]; uni['s_' + k].value = d.escala; });
+    const [cd, cn] = await Promise.all([tex(p.tour + t.cielo.dia), tex(p.tour + t.cielo.noche)]); cd.wrapS = cn.wrapS = THREE.RepeatWrapping;
+    uni.cieloD.value = cd; uni.cieloN.value = cn; uni.offD.value = t.cielo.offD; uni.offN.value = t.cielo.offN; uni.signo.value = t.cielo.signo;
+    uni.fijoOn.value = 0; T3.mezclas = t.mezclas;
+  } else { ficha4k++; uni.t_fijo.value = await tex(p.imagen_2k || p.imagen); uni.fijoOn.value = 1; pedir4k(p); }
+  // al saltar se conserva hacia donde se miraba
+  lon = rumboAnterior === null ? 180 : 180 + rumboAnterior - p.mira_az;
+  $('#t-nombre').textContent = p.nombre; $('#t-nota').textContent = p.nota + (p.tipo === 'fijo' ? ' · noche y luces llegan con los pases de PI1' : '');
+  document.querySelectorAll('.pt').forEach(d => d.classList.toggle('on', d.dataset.c === p.clave));
+  await aplicar(); armarSaltos(); $('#fundido').style.opacity = 0;
+  history.replaceState(null, '', '#' + p.clave); avisarPadre({ virtu: 'punto360', clave: p.clave });
+}
+async function aplicar() {
+  const p = est.punto, conPases = p && p.tipo === 'pases';
+  document.querySelectorAll('#estados button[data-k]').forEach(b => { b.disabled = !conPases; b.classList.toggle('on', est[b.dataset.k] === b.dataset.v && conPases); });
+  if (!conPases) return;
+  const m = T3.mezclas[est.hora + (est.luces === '1' ? '+' : '-')];
+  for (const k of PASES) { const v = m[k] || [0, 0, 0]; uni['k_' + k].value.set(v[0], v[1], v[2]); }
+  uni.kCieloD.value = m.cieloD || 0; uni.kCieloN.value = m.cieloN || 0; uni.expo.value = m.expo || 1;
+  // de dia y con luces, el punto con pases muestra el V-Ray 4K; noche y luces apagadas son la mezcla de pases de PI1
+  const tok = ++ficha4k;
+  if (p.imagen_2k && est.hora === 'dia' && est.luces === '1') { const t = await tex(p.imagen_2k); if (tok === ficha4k) { uni.t_fijo.value = t; uni.fijoOn.value = 1; uni.expo.value = 1; pedir4k(p); } }
+  else { uni.fijoOn.value = 0; T3.res = 'pases'; }
+}
+document.querySelectorAll('#estados button[data-k]').forEach(b => b.onclick = () => { est[b.dataset.k] = b.dataset.v; aplicar();
+  avisarPadre({ virtu: 'estado', estado: { noche: est.hora === 'noche' } }); });
+addEventListener('keydown', e => { if (!est.punto || est.punto.tipo !== 'pases') return;
+  const m = { d: ['hora', 'dia'], n: ['hora', 'noche'], l: ['luces', est.luces === '1' ? '0' : '1'] }[e.key]; if (m) { est[m[0]] = m[1]; aplicar(); } });
+$('#b-3d').onclick = () => { const p = est.punto; avisarPadre({ virtu: 'ir', modulo: '3d', pie: { x: p.pos[0], y: p.pos[1], az: rumbo() } }); };
+addEventListener('message', ev => { if (ev.origin !== location.origin || !ev.data) return; const d = ev.data;
+  if (d.virtu === 'punto360-abrir' && d.clave) ponerPunto(d.clave);
+  if (d.virtu === 'estado360') { if (typeof d.noche === 'boolean') { est.hora = d.noche ? 'noche' : 'dia'; aplicar(); } } });
+
+// ---------------------------------------------------------------- saltos: marcas en el piso hacia los otros puntos (hasta 9 m) y lista
+const etq = $('#etiquetas'); let saltos = [];
+function armarSaltos() {
+  etq.innerHTML = ''; saltos = [];
+  const p = est.punto;
+  for (const q of PUNTOS) { if (q === p) continue;
+    const dx = q.pos[0] - p.pos[0], dy = q.pos[1] - p.pos[1], dist = Math.hypot(dx, dy); if (dist > 9.5) continue;
+    const az = (THREE.MathUtils.radToDeg(Math.atan2(dx, dy)) + 360) % 360;
+    const elev = THREE.MathUtils.radToDeg(Math.atan2((q.piso_z || 0) - ((p.piso_z || 0) + (p.ojo || 1.6)), dist));
+    const d = document.createElement('div'); d.className = 'salto'; d.innerHTML = `<div class="anillo"></div><span>${q.nombre}</span>`;
+    d.onclick = () => ponerPunto(q.clave); etq.appendChild(d);
+    saltos.push({ el: d, dir: dirDe(az, elev).multiplyScalar(5), clave: q.clave, az, dist: +dist.toFixed(1) });
+  }
+  T3.saltos = saltos.map(s => ({ clave: s.clave, az: +s.az.toFixed(1), dist: s.dist }));
+}
+const lista = $('#lista');
+for (const q of PUNTOS) { const d = document.createElement('div'); d.className = 'pt'; d.dataset.c = q.clave;
+  d.innerHTML = `<img loading="lazy" src="${q.mini || ''}" alt=""><div>${q.nombre}<small>${q.tipo === 'pases' ? 'día · noche · luces' : 'día'}</small></div>`;
+  d.onclick = () => ponerPunto(q.clave); lista.appendChild(d); }
+
+// ---------------------------------------------------------------- planta (la misma de la rejilla del 3D, recortada a los puntos)
+const PL = { x0: -12.5, x1: 10.5, y0: -10.5, y1: 35.5 };       // m: caja de los 10 puntos con margen
+const cp = $('#cplano'), cx = cp.getContext('2d'); const plantaImg = new Image();
+let man = null;
+fetch('modelo/manifiesto.json').then(r => r.json()).then(m => { man = m.colision.planta; plantaImg.src = 'modelo/' + man.archivo; });
+cp.height = Math.round(cp.width * (PL.y1 - PL.y0) / (PL.x1 - PL.x0));
+const aPx = (x, y) => [(x - PL.x0) / (PL.x1 - PL.x0) * cp.width, (PL.y1 - y) / (PL.y1 - PL.y0) * cp.height];
+function dibujarPlano() {
+  cx.fillStyle = '#F7F4EE'; cx.fillRect(0, 0, cp.width, cp.height);
+  if (man && plantaImg.complete && plantaImg.naturalWidth) {          // recorte de planta.png (x0..x1, y0..y1 en m)
+    const sx = (PL.x0 - man.x0) / (man.x1 - man.x0) * plantaImg.naturalWidth, sw = (PL.x1 - PL.x0) / (man.x1 - man.x0) * plantaImg.naturalWidth;
+    const sy = (man.y1 - PL.y1) / (man.y1 - man.y0) * plantaImg.naturalHeight, sh = (PL.y1 - PL.y0) / (man.y1 - man.y0) * plantaImg.naturalHeight;
+    cx.globalAlpha = 0.9; cx.imageSmoothingEnabled = true; cx.drawImage(plantaImg, sx, sy, sw, sh, 0, 0, cp.width, cp.height); cx.globalAlpha = 1; }
+  for (const q of PUNTOS) { const [x, y] = aPx(q.pos[0], q.pos[1]), on = q === est.punto;
+    cx.beginPath(); cx.arc(x, y, on ? 6 : 4.5, 0, 7); cx.fillStyle = on ? '#9A5A2E' : (q.tipo === 'pases' ? '#C98A5B' : '#1E1C1A'); cx.fill();
+    cx.lineWidth = 1.5; cx.strokeStyle = '#fff'; cx.stroke(); }
+  if (est.punto) { const [x, y] = aPx(est.punto.pos[0], est.punto.pos[1]), a = THREE.MathUtils.degToRad(rumbo()), h = THREE.MathUtils.degToRad(fov * 0.6);
+    cx.beginPath(); cx.moveTo(x, y); cx.arc(x, y, 26, a - Math.PI / 2 - h / 2, a - Math.PI / 2 + h / 2); cx.closePath(); cx.fillStyle = 'rgba(154,90,46,.28)'; cx.fill(); }
+  $('#t-n').textContent = `${PUNTOS.length} puntos`;
+}
+cp.addEventListener('click', e => { const r = cp.getBoundingClientRect(), mx = (e.clientX - r.left) * cp.width / r.width, my = (e.clientY - r.top) * cp.height / r.height;
+  let mejor = null, dm = 14; for (const q of PUNTOS) { const [x, y] = aPx(q.pos[0], q.pos[1]); const d = Math.hypot(x - mx, y - my); if (d < dm) { dm = d; mejor = q; } }
+  if (mejor) ponerPunto(mejor.clave); });
+
+// ---------------------------------------------------------------- bucle
+function tam() { const w = innerWidth, h = innerHeight; ren.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+addEventListener('resize', tam); tam();
+const v = new THREE.Vector3();
+function dibujar() {
+  const ph = THREE.MathUtils.degToRad(90 - lat), th = THREE.MathUtils.degToRad(lon);
+  cam.fov = fov; cam.updateProjectionMatrix(); cam.lookAt(Math.sin(ph) * Math.cos(th), Math.cos(ph), Math.sin(ph) * Math.sin(th)); cam.updateMatrixWorld();
+  ren.render(escena, cam);
+  for (const s of saltos) { v.copy(s.dir).project(cam); const vis = v.z < 1 && Math.abs(v.x) < 1.2 && Math.abs(v.y) < 1.2;
+    s.el.style.display = vis ? '' : 'none'; if (vis) { s.el.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; s.el.style.top = ((1 - v.y) / 2 * innerHeight) + 'px'; } }
+  dibujarPlano();
+}
+(function bucle() { dibujar(); requestAnimationFrame(bucle); })();
+T3.dibujar = dibujar; T3.ponerPunto = ponerPunto; T3.est = est; T3.vista = (l, a, f) => { if (l !== undefined) lon = l; if (a !== undefined) lat = a; if (f) fov = f; dibujar(); };
+T3.rumbo = () => rumbo();
+T3.medir = () => { dibujar(); const gl = ren.getContext(), w = gl.drawingBufferWidth, hh = gl.drawingBufferHeight, px = new Uint8Array(w * hh * 4);
+  gl.readPixels(0, 0, w, hh, gl.RGBA, gl.UNSIGNED_BYTE, px); const s = [0, 0, 0]; for (let i = 0; i < px.length; i += 4) { s[0] += px[i]; s[1] += px[i + 1]; s[2] += px[i + 2]; }
+  return s.map(x => Math.round(10 * x / (w * hh)) / 10); };
+
+// ---------------------------------------------------------------- arranque: el punto de la direccion o el estar
+const pedido = decodeURIComponent(location.hash.replace('#', ''));
+const q = new URLSearchParams(location.search); if (q.get('noche') === '1') est.hora = 'noche';
+await ponerPunto(PUNTOS.some(p => p.clave === pedido) ? pedido : (PUNTOS.find(p => p.tipo === 'pases') || PUNTOS[0]).clave, true);
+$('#carga').remove(); T3.carga_ms = Math.round(performance.now() - t0); T3.listo = true;
+</script>
+</body>
+</html>
