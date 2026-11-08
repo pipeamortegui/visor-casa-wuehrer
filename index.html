@@ -4,7 +4,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Visor VIRTÙ · Casa Wuehrer</title>
+<title>Casa Wuehrer</title>
 <!-- Visor VIRTU v1, etapa E1 "cascara" (PRB-0002, 7-nov-2026). Portada + barra de modulos; el modulo 3D es visor3d.html (copia vestida del
      visor de IW1) en un marco que solo se carga al entrar. 360, Planos, Axonometrias y Productos: avisos de etapa hasta que lleguen. Sin publicar. -->
 <style>
@@ -167,7 +167,7 @@ function ir() {
   if (m === 'axo') { abrir3D(); al3D({ modo: 'axo', axo: partes[1] }); }
   if (m === 'planos') abrirPlanos(partes[1], partes[2]);
   if (m === 'productos') abrirProductos(partes[1] && decodeURIComponent(partes[1]));
-  document.title = 'Visor VIRTÙ · Casa Wuehrer' + (m === 'inicio' ? '' : ' · ' + document.querySelector(`#modulos a[data-m="${m}"]`).firstChild.textContent);
+  document.title = 'Casa Wuehrer' + (m === 'inicio' ? '' : ' · ' + document.querySelector(`#modulos a[data-m="${m}"]`).firstChild.textContent);
 }
 // el 3D (43 MB) se carga solo la primera vez que se entra; despues queda vivo al cambiar de modulo
 function abrir3D() {
