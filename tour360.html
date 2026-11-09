@@ -2,12 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Casa Wuehrer · 360</title>
-<!-- Visor VIRTU v1, etapa E3 (PRB-0002, 7-nov-2026): recorrido 360. Lee tour360.json (lo escribe fichas/interactivo/visor_virtu_v1/preparar_360.py).
-     Puntos "pases": mezcla de pases de luz V-Ray en el navegador (shader del prototipo tour_v0 de PI1, sin cambios en la formula), con dia/noche y luces.
-     Puntos "fijo": un 360 V-Ray de dia. Saltos por la planta y por marcas en el piso. three.js 0.160.0 fijo (jsdelivr), como el resto del visor. -->
+<title>Visor VIRTÙ · 360</title>
 <style>
 :root { --papel:#F2EDE5; --panel:rgba(242,237,229,.94); --tinta:#1E1C1A; --gris:#7D776F; --linea:#D6CDBF; --terra:#9A5A2E; }
 * { box-sizing:border-box; }
@@ -71,26 +67,36 @@ button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } bu
   #cab { padding:6px 10px; max-width:calc(100% - 150px); }
 }
 </style>
+<link rel="preload" href="cristal/jost-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="cristal/base.css">
+<link rel="stylesheet" href="cristal/tour360.css">
+<script src="cristal/accesible.js" defer></script>
 </head>
 <body>
 <canvas id="vista"></canvas>
 <div id="etiquetas"></div>
 <div id="fundido"></div>
-<div id="cab" class="caja"><b id="t-nombre">—</b><div class="nota" id="t-nota"></div></div>
 <div id="mini"><div id="mini-fila"></div></div>
-<button id="b-planta" aria-controls="plano" aria-expanded="false">Planta</button>
+<button id="b-planta" class="circulo" type="button" aria-controls="plano" aria-expanded="false" aria-label="Planta"><svg viewBox="-12 -12 24 24" aria-hidden="true"><circle r="10.5" fill="none" stroke="currentColor" stroke-width=".8"/><path id="aguja" d="M0-10.5V-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><rect x="-2.4" y="-5" width="4.8" height="10" fill="none" stroke="currentColor" stroke-width=".9"/></svg></button>
 <div id="plano" class="caja" hidden><svg id="splano" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Planta de la casa con los puntos del recorrido"></svg></div>
 <div id="pl-nom"></div>
-<div id="estados" class="caja">
-  <span class="et">Hora</span><button data-k="hora" data-v="dia">Día</button><button data-k="hora" data-v="noche">Noche</button>
-  <span class="sep"></span>
-  <span class="et">Luces</span><button data-k="luces" data-v="1">Encendidas</button><button data-k="luces" data-v="0">Apagadas</button>
-  <span class="sep"></span>
-  <span class="et">Persiana</span><button class="solo-escritorio" disabled title="Por ahora todos los 360 son con la persiana recogida (Pipe: «Recogida en todos»)">Recogida</button>
-  <span class="sep"></span>
-  <button id="b-3d" class="acc" title="Caminar en el 3D desde este punto">Ver en 3D</button>
-</div>
-<div id="carga">cargando el recorrido…</div>
+<aside id="panel" aria-label="Controles del recorrido">
+  <div class="nombre"><i id="t-num">01</i><b id="t-nombre">—</b></div>
+  <p class="nota" id="t-nota"></p>
+  <div class="linea"></div>
+  <div id="estados">
+    <span class="seg solo"><button type="button" data-h="0">Día</button><button type="button" data-h="1">Noche</button></span>
+    <span class="seg solo"><button type="button" data-l="1">Con luces</button><button type="button" data-l="0">Sin luces</button></span>
+    <span class="quieto-txt" title="Todos los recorridos están con la persiana recogida">Persiana recogida</span>
+  </div>
+  <div class="pieza">
+    <div class="reproductor"><button id="ant" type="button" aria-label="Punto anterior">‹</button><span id="t-cuenta">1 / 10</span><button id="sig" type="button" aria-label="Punto siguiente">›</button></div>
+    <button id="b-3d" class="capsula" type="button">Ver en el modelo</button>
+  </div>
+</aside>
+<button id="plegar" class="circulo" type="button" aria-label="Ocultar el panel" aria-expanded="true">‹</button>
+<div id="carga"><span>Casa Wuehrer</span></div>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const $ = s => document.querySelector(s);
@@ -100,7 +106,8 @@ const t0 = performance.now();
 const QS = new URLSearchParams(location.search);
 const tour = await (await fetch(QS.get('tour') === 'v1' ? 'tour360.json' : 'tour360_4k.json')).json();
 const PUNTOS = tour.puntos.filter(p => p.tipo !== 'falta');
-for (const p of PUNTOS) p.nombre = p.nombre.replace(/bano/, 'baño').replace(/cesped/, 'césped').replace(/vestibulo/, 'vestíbulo').replace(/sofa/, 'sofá');   // la ficha va sin tildes; a la vista, con ellas
+const PUBLICO = { estar: 'Estar y comedor', cocina: 'Cocina', suite: 'Dormitorio principal', bano: 'Baño principal', vestibulo: 'Vestíbulo', patio: 'Patio central', piscina: 'Piscina', pradera: 'Prado', 'telas-estar': 'Junto al sofá', 'cama-lado': 'Junto a la cama' };
+for (const p of PUNTOS) p.nombre = PUBLICO[p.clave] || p.nombre.replace(/bano/, 'baño').replace(/cesped/, 'césped').replace(/vestibulo/, 'vestíbulo').replace(/sofa/, 'sofá');   // la ficha va sin tildes; a la vista, con ellas
 const est = { hora: 'dia', luces: '1', punto: null };
 function avisarPadre(m) { if (parent !== window) parent.postMessage(m, location.origin); }
 
@@ -118,7 +125,9 @@ function tex(ruta) {
 }
 // 4K: primero la version de 2048 px (al instante), luego la de 4096 con mipmaps. En celulares se queda en 2048 (pantalla chica, memoria justa).
 // Solo se guardan los ultimos 3 panoramas 4K en la tarjeta: cada uno ocupa unos 45 MB de memoria grafica.
-const USA4K = QS.get('res') === '4k' || (QS.get('res') !== '2k' && ren.capabilities.maxTextureSize >= 4096 && !(matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600));
+const CEL360 = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600, MAXTEX = ren.capabilities.maxTextureSize;
+const USA4K = QS.get('res') !== '2k' && MAXTEX >= 4096;
+const rutaAlta = p => (!CEL360 && QS.get('res') !== '4k' && MAXTEX >= (p.ancho || 4096)) ? p.imagen : (p.imagen_4k || p.imagen);
 const cache4k = new Map(); let ficha4k = 0;
 function tex4k(ruta) {
   if (cache4k.has(ruta)) { const v = cache4k.get(ruta); cache4k.delete(ruta); cache4k.set(ruta, v); return v; }
@@ -127,7 +136,7 @@ function tex4k(ruta) {
   while (cache4k.size > 3) { const [k, viejo] = cache4k.entries().next().value; cache4k.delete(k); viejo.then(t => t.dispose()); }
   return v;
 }
-function pedir4k(p) { T3.res = '2k'; if (!p.imagen_2k || !USA4K) return; const tok = ficha4k; tex4k(p.imagen).then(t => { if (tok === ficha4k) { uni.t_fijo.value = t; T3.res = '4k'; } }); }
+function pedir4k(p) { T3.res = '2k'; if (!p.imagen_2k || !USA4K) return; const tok = ficha4k; T3.ruta = rutaAlta(p); tex4k(T3.ruta).then(t => { if (tok === ficha4k) { uni.t_fijo.value = t; T3.res = '4k'; } }); }
 // shader de PI1 (tour_v0): suma lineal de pases guardados como (x/escala)^(1/2,2); cielo por la mascara alfa. "fijo" = una imagen sola.
 const PASES = ['sol', 'ent', 'int_d', 'int_n', 'si_int', 'si_ext', 'alfa', 'fijo'];
 const uni = { gamma: { value: 2.2 }, expo: { value: 1.0 }, cieloD: { value: null }, cieloN: { value: null }, offD: { value: 0 }, offN: { value: 0 }, signo: { value: 1 },
@@ -137,13 +146,13 @@ const frag = `precision highp float; varying vec2 vUv;
 uniform float gamma, expo, offD, offN, signo, fijoOn, kCieloD, kCieloN; uniform sampler2D cieloD, cieloN;
 ${PASES.map(p => `uniform sampler2D t_${p}; uniform float s_${p}; uniform vec3 k_${p};`).join('\n')}
 vec3 lin(sampler2D t, float s) { return pow(texture2D(t, vUv).rgb, vec3(gamma)) * s; }
-void main() { vec3 c;
-  if (fijoOn > 0.5) { c = lin(t_fijo, 1.0); }
-  else { c = k_sol * lin(t_sol, s_sol) + k_ent * lin(t_ent, s_ent) + k_int_d * lin(t_int_d, s_int_d) + k_int_n * lin(t_int_n, s_int_n)
+void main() { vec3 c = vec3(0.0);
+  if (fijoOn < 0.999) { c = k_sol * lin(t_sol, s_sol) + k_ent * lin(t_ent, s_ent) + k_int_d * lin(t_int_d, s_int_d) + k_int_n * lin(t_int_n, s_int_n)
       + k_si_int * lin(t_si_int, s_si_int) + k_si_ext * lin(t_si_ext, s_si_ext);
     float a = texture2D(t_alfa, vUv).r; float u = fract(signo * vUv.x + offD); float un = fract(signo * vUv.x + offN);
     vec3 cd = pow(texture2D(cieloD, vec2(u, vUv.y)).rgb, vec3(2.2)); vec3 cn = pow(texture2D(cieloN, vec2(un, vUv.y)).rgb, vec3(2.2));
     c += (1.0 - a) * (kCieloD * cd + kCieloN * cn); }
+  if (fijoOn > 0.001) c = mix(c, lin(t_fijo, 1.0), fijoOn);
   gl_FragColor = vec4(pow(clamp(c * expo, 0.0, 1.0), vec3(1.0 / 2.2)), 1.0); }`;
 const vert = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const geo = new THREE.SphereGeometry(10, 96, 48); geo.scale(-1, 1, 1);
@@ -166,7 +175,7 @@ function dirDe(az, elev) {          // direccion en la esfera para un rumbo de p
 // ---------------------------------------------------------------- estados y puntos
 async function ponerPunto(clave, sinFundido) {
   const p = PUNTOS.find(x => x.clave === clave) || PUNTOS[0];
-  if (!sinFundido && est.punto) { $('#fundido').style.opacity = 1; await new Promise(r => setTimeout(r, 220)); }
+  if (!sinFundido && est.punto) { $('#fundido').style.opacity = 1; await new Promise(r => setTimeout(r, 430)); }
   const rumboAnterior = est.punto ? rumbo() : null;
   est.punto = p;
   if (p.tipo === 'pases') {
@@ -179,31 +188,49 @@ async function ponerPunto(clave, sinFundido) {
   } else { ficha4k++; uni.t_fijo.value = await tex(p.imagen_2k || p.imagen); uni.fijoOn.value = 1; pedir4k(p); }
   // al saltar se conserva hacia donde se miraba
   lon = rumboAnterior === null ? 180 : 180 + rumboAnterior - p.mira_az;
-  $('#t-nombre').textContent = p.nombre; $('#t-nota').textContent = p.nota + (p.tipo === 'fijo' ? ' · noche y luces llegan con los pases de PI1' : '');
+  $('#t-nombre').textContent = p.nombre; $('#t-nota').textContent = 'Réplica de estudio de una obra de Engelking Architects.';
+  { const i = PUNTOS.indexOf(p); $('#t-num').textContent = String(i + 1).padStart(2, '0'); $('#t-cuenta').textContent = (i + 1) + ' / ' + PUNTOS.length; }
   marcarMini(p.clave); marcarPlano();
   await aplicar(); armarSaltos(); $('#fundido').style.opacity = 0;
   history.replaceState(null, '', '#' + p.clave); avisarPadre({ virtu: 'punto360', clave: p.clave });
 }
-async function aplicar() {
-  const p = est.punto, conPases = p && p.tipo === 'pases';
-  document.querySelectorAll('#estados button[data-k]').forEach(b => { b.disabled = !conPases; b.classList.toggle('on', est[b.dataset.k] === b.dataset.v && conPases); });
-  if (!conPases) return;
-  const m = T3.mezclas[est.hora + (est.luces === '1' ? '+' : '-')];
-  for (const k of PASES) { const v = m[k] || [0, 0, 0]; uni['k_' + k].value.set(v[0], v[1], v[2]); }
-  uni.kCieloD.value = m.cieloD || 0; uni.kCieloN.value = m.cieloN || 0; uni.expo.value = m.expo || 1;
-  // de dia y con luces, el punto con pases muestra el V-Ray 4K; noche y luces apagadas son la mezcla de pases de PI1
-  const tok = ++ficha4k;
-  if (p.imagen_2k && est.hora === 'dia' && est.luces === '1') { const t = await tex(p.imagen_2k); if (tok === ficha4k) { uni.t_fijo.value = t; uni.fijoOn.value = 1; uni.expo.value = 1; pedir4k(p); } }
-  else { uni.fijoOn.value = 0; T3.res = 'pases'; }
+// Cristal: la hora va de 0 (dia) a 1 (noche) con un fundido; entre ambos se interpolan las mezclas de pases
+const HORA = { x: 0, marca: 0, meta: 0 };
+const interp = (a, b, t) => a + (b - a) * t, suave = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function mezclar() {
+  const p = est.punto; if (!p || p.tipo !== 'pases' || !T3.mezclas) return;
+  const L = est.luces === '1' ? '+' : '-', d = T3.mezclas['dia' + L], n = T3.mezclas['noche' + L], x = HORA.x;
+  for (const k of PASES) { const a = d[k] || [0, 0, 0], b = n[k] || [0, 0, 0]; uni['k_' + k].value.set(interp(a[0], b[0], x), interp(a[1], b[1], x), interp(a[2], b[2], x)); }
+  uni.kCieloD.value = interp(d.cieloD || 0, n.cieloD || 0, x); uni.kCieloN.value = interp(d.cieloN || 0, n.cieloN || 0, x); uni.expo.value = interp(d.expo || 1, n.expo || 1, x);
+  uni.fijoOn.value = (p.imagen_2k && est.luces === '1') ? 1 - suave(0, 0.22, x) : 0;
+  T3.res = uni.fijoOn.value > 0.5 ? (T3.res === 'pases' ? '2k' : T3.res) : 'pases';
 }
-document.querySelectorAll('#estados button[data-k]').forEach(b => b.onclick = () => { est[b.dataset.k] = b.dataset.v; aplicar();
-  avisarPadre({ virtu: 'estado', estado: { noche: est.hora === 'noche' } }); });
+function pintarControles() {
+  const con = est.punto && est.punto.tipo === 'pases';
+  document.querySelectorAll('.solo').forEach(e => e.style.display = con ? '' : 'none');
+  document.querySelectorAll('[data-h]').forEach(b => b.classList.toggle('on', +b.dataset.h === HORA.meta));
+  document.querySelectorAll('[data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === est.luces));
+}
+async function aplicar() {
+  const p = est.punto, conPases = p && p.tipo === 'pases'; pintarControles();
+  if (!conPases) { uni.expo.value = 1; return; }
+  const tok = ++ficha4k;
+  if (p.imagen_2k) { const t = await tex(p.imagen_2k); if (tok === ficha4k) { uni.t_fijo.value = t; pedir4k(p); } }
+  mezclar();
+}
+function ponerHora(x) { HORA.x = x; const n = x > 0.5 ? 'noche' : 'dia'; if (n !== est.hora) { est.hora = n; avisarPadre({ virtu: 'estado', estado: { noche: n === 'noche' } }); } mezclar(); }
+function irHora(meta) { HORA.meta = meta; pintarControles(); const ini = HORA.x, t0h = performance.now(), m = ++HORA.marca; (function paso(t) { if (m !== HORA.marca) return; const k = Math.min(1, (t - t0h) / 1100); ponerHora(interp(ini, meta, k * k * (3 - 2 * k))); if (k < 1) requestAnimationFrame(paso); })(t0h); }
+document.querySelectorAll('[data-h]').forEach(b => b.onclick = () => irHora(+b.dataset.h));
+document.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { est.luces = b.dataset.l; aplicar(); });
 addEventListener('keydown', e => { if (!est.punto || est.punto.tipo !== 'pases') return;
-  const m = { d: ['hora', 'dia'], n: ['hora', 'noche'], l: ['luces', est.luces === '1' ? '0' : '1'] }[e.key]; if (m) { est[m[0]] = m[1]; aplicar(); } });
+  if (e.key === 'd') irHora(0); else if (e.key === 'n') irHora(1); else if (e.key === 'l') { est.luces = est.luces === '1' ? '0' : '1'; aplicar(); } });
+const pasoPunto = d => ponerPunto(PUNTOS[(PUNTOS.indexOf(est.punto) + d + PUNTOS.length) % PUNTOS.length].clave);
+$('#ant').onclick = () => pasoPunto(-1); $('#sig').onclick = () => pasoPunto(1);
+{ const pl = $('#plegar'); pl.onclick = () => { const s = document.body.classList.toggle('plegado'); pl.textContent = s ? '›' : '‹'; pl.setAttribute('aria-expanded', !s); pl.setAttribute('aria-label', s ? 'Mostrar el panel' : 'Ocultar el panel'); }; }
 $('#b-3d').onclick = () => { const p = est.punto; avisarPadre({ virtu: 'ir', modulo: '3d', pie: { x: p.pos[0], y: p.pos[1], az: rumbo() } }); };
 addEventListener('message', ev => { if (ev.origin !== location.origin || !ev.data) return; const d = ev.data;
   if (d.virtu === 'punto360-abrir' && d.clave) ponerPunto(d.clave);
-  if (d.virtu === 'estado360') { if (typeof d.noche === 'boolean') { est.hora = d.noche ? 'noche' : 'dia'; aplicar(); } } });
+  if (d.virtu === 'estado360') { if (typeof d.noche === 'boolean' && (d.noche ? 1 : 0) !== HORA.meta) irHora(d.noche ? 1 : 0); } });
 
 // ---------------------------------------------------------------- saltos: marcas en el piso hacia los otros puntos (hasta 9 m) y lista
 const etq = $('#etiquetas'); let saltos = [];
@@ -215,7 +242,7 @@ function armarSaltos() {
     const az = (THREE.MathUtils.radToDeg(Math.atan2(dx, dy)) + 360) % 360;
     const elev = THREE.MathUtils.radToDeg(Math.atan2((q.piso_z || 0) - ((p.piso_z || 0) + (p.ojo || 1.6)), dist));
     const d = document.createElement('div'); d.className = 'salto'; d.innerHTML = `<div class="anillo"></div><span>${q.nombre}</span>`;
-    d.onclick = () => ponerPunto(q.clave); etq.appendChild(d);
+    d.setAttribute('aria-label', 'Ir a ' + q.nombre); d.onclick = () => ponerPunto(q.clave); etq.appendChild(d);
     saltos.push({ el: d, dir: dirDe(az, elev).multiplyScalar(5), clave: q.clave, az, dist: +dist.toFixed(1) });
   }
   T3.saltos = saltos.map(s => ({ clave: s.clave, az: +s.az.toFixed(1), dist: s.dist }));
@@ -224,7 +251,7 @@ const mini = $('#mini'), fila = $('#mini-fila'), MINI = new Map();
 for (const q of PUNTOS) { const b = document.createElement('button'); b.className = 'mn'; b.dataset.c = q.clave; b.setAttribute('aria-label', 'Ir a ' + q.nombre);
   b.innerHTML = `<img src="${q.mini || ''}" alt=""><span class="nom">${q.nombre}</span>`; b.onclick = () => ponerPunto(q.clave); fila.appendChild(b); MINI.set(q.clave, b); }
 mini.addEventListener('wheel', e => { if (mini.scrollWidth > mini.clientWidth) { mini.scrollLeft += e.deltaY || e.deltaX; e.preventDefault(); } }, { passive: false });
-{ const barra = $('#estados'), pegar = () => { mini.style.bottom = (innerHeight - barra.getBoundingClientRect().top) + 'px'; }; new ResizeObserver(pegar).observe(barra); addEventListener('resize', pegar); pegar(); }   // la fila siempre justo encima de la barra, aunque esta ocupe dos renglones
+{ const pn = $('#panel'), med = () => document.documentElement.style.setProperty('--alto-panel', pn.offsetHeight + 'px'); new ResizeObserver(med).observe(pn); med(); }
 function marcarMini(c) { for (const [k, b] of MINI) b.classList.toggle('on', k === c); const b = MINI.get(c); mini.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - mini.clientWidth / 2, behavior: 'smooth' }); }
 
 // ---------------------------------------------------------------- planta (E9, Pipe 8-nov: «sencilla, no tiene tanto color, tiene el mobiliario y se puede distinguir cada espacio»)
@@ -258,7 +285,7 @@ function ajustarPlano() {                                      // cabe sobre los
   if (libre < 230) libre = barra - 8 - top - 10;
   const k = Math.min(1, libre / pH); sv.style.width = (pW * k).toFixed(1) + 'px'; sv.style.height = (pH * k).toFixed(1) + 'px';
 }
-function verPlano(si) { plano.hidden = !si; plNom.style.display = 'none'; bPl.textContent = si ? 'Ocultar planta' : 'Planta'; bPl.classList.toggle('on', si); bPl.setAttribute('aria-expanded', si); ajustarPlano(); }
+function verPlano(si) { plano.hidden = !si; plNom.style.display = 'none'; bPl.setAttribute('aria-label', si ? 'Ocultar planta' : 'Planta'); bPl.classList.toggle('on', si); bPl.setAttribute('aria-expanded', si); ajustarPlano(); }
 bPl.onclick = () => verPlano(plano.hidden);
 new ResizeObserver(ajustarPlano).observe($('#estados')); addEventListener('resize', ajustarPlano);
 let clavePl = '';
@@ -268,7 +295,7 @@ function dibujarPlano() {                                      // solo el cono c
   const k = `${est.punto.clave}|${az.toFixed(1)}|${ab.toFixed(1)}`; if (k === clavePl) return; clavePl = k;
   const R = dibPl.fuera[est.punto.clave] ? 9 : 20, p = g => [o.x + R * Math.cos(THREE.MathUtils.degToRad(g - 90)), o.y + R * Math.sin(THREE.MathUtils.degToRad(g - 90))], a = p(az - ab / 2), b = p(az + ab / 2);
   cono.setAttribute('d', `M${o.x.toFixed(1)} ${o.y.toFixed(1)}L${a[0].toFixed(1)} ${a[1].toFixed(1)}A${R} ${R} 0 ${ab > 180 ? 1 : 0} 1 ${b[0].toFixed(1)} ${b[1].toFixed(1)}Z`);
-  T3.plano = { az: +az.toFixed(1), abertura: +ab.toFixed(1) };
+  T3.plano = { az: +az.toFixed(1), abertura: +ab.toFixed(1) }; $('#aguja').setAttribute('transform', 'rotate(' + az.toFixed(1) + ')');
 }
 
 // ---------------------------------------------------------------- bucle
@@ -292,7 +319,7 @@ T3.medir = () => { dibujar(); const gl = ren.getContext(), w = gl.drawingBufferW
 
 // ---------------------------------------------------------------- arranque: el punto de la direccion o el estar
 const pedido = decodeURIComponent(location.hash.replace('#', ''));
-const q = new URLSearchParams(location.search); if (q.get('noche') === '1') est.hora = 'noche';
+const q = new URLSearchParams(location.search); if (q.get('noche') === '1') { est.hora = 'noche'; HORA.x = 1; HORA.meta = 1; }
 await ponerPunto(PUNTOS.some(p => p.clave === pedido) ? pedido : (PUNTOS.find(p => p.tipo === 'pases') || PUNTOS[0]).clave, true);
 $('#carga').remove(); T3.carga_ms = Math.round(performance.now() - t0); T3.listo = true;
 </script>

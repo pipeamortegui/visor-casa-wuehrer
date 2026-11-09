@@ -1,13 +1,9 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Casa Wuehrer · Productos</title>
-<!-- Visor VIRTU v1, etapa E5 (PRB-0002, 7-nov-2026): catalogo de productos de las redes. Lee, en su carpeta y sin copiarlos, el catalogo de RT2
-     (fichas/redes_rt2/salida/catalogo_productos_rt2.json) y su modelo de datos (fichas/redes_rt2/redes_rt2_modelo_v1.json) para decir cuanto se usa
-     de cada producto y donde. "Ver en 3D" resalta sus piezas en el modulo 3D. -->
+<title>Visor VIRTÙ · Productos</title>
 <style>
 :root { --papel:#F2EDE5; --papel2:#E9E2D7; --tinta:#1E1C1A; --gris:#7D776F; --linea:#D6CDBF; --terra:#9A5A2E; }
 * { box-sizing:border-box; }
@@ -48,26 +44,32 @@ a { color:var(--terra); text-decoration:none; font-weight:600; }
   #detalle { position:fixed; inset:auto 0 0 0; width:auto; max-height:70%; border-left:0; border-top:1px solid var(--linea); box-shadow:0 -6px 20px rgba(0,0,0,.12); border-radius:14px 14px 0 0; }
 }
 </style>
+<link rel="preload" href="cristal/jost-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="cristal/base.css">
+<link rel="stylesheet" href="cristal/productos.css">
+<script src="cristal/accesible.js" defer></script>
 </head>
 <body>
 <div id="barra">
   <h1>Productos</h1>
   <div class="chips" id="f-sis"></div>
   <div class="chips" id="f-est"></div>
-  <input id="buscar" type="search" placeholder="Buscar marca, modelo, SKU…">
+  <input id="buscar" type="search" placeholder="Buscar marca o modelo…" aria-label="Buscar marca o modelo">
   <span id="cuenta"></span>
 </div>
 <div id="aviso"></div>
 <div id="cuerpo"><div id="rejilla"></div><aside id="detalle"></aside></div>
 <script>
 const $ = s => document.querySelector(s);
+const DIAG = /[?&]diag=1/.test(location.search);
+const TIPOS = { tuberia: 'Tubería', valvula: 'Válvula' }, TIPO = t => t ? (TIPOS[t] || t[0].toUpperCase() + t.slice(1)) : '';
 const CAT_URL = 'datos/catalogo_productos_rt2.json', MOD_URL = 'datos/redes_rt2_modelo_v1.json';
 const SIS = { CAL: ['Calefacción', '#e4572e'], AIR: ['Aire acondicionado', '#2e86de'], ELE: ['Eléctrica', '#f2c14e'], PLO: ['Plomería', '#17a398'], GAS: ['Gas', '#9b5de5'] };
 const EST = { todos: 'Todos', dato: 'Con dato', prop: 'Propuesta' };
 const PR = window.PR = { listo: false };
 let cat, uso = {}, fSis = 'todos', fEst = 'todos', sel = null;
 const esProp = p => /PROPUESTA/i.test(p.estado || '');
-const etiqueta = e => ({ 'DATO-FABRICANTE': 'dato del fabricante', 'PROPUESTA': 'propuesta RT2', 'FOTO': 'leído en foto' })[e] || (e || '').replace('DATO ', 'dato ');
+const etiqueta = e => ({ 'DATO-FABRICANTE': 'dato del fabricante', 'PROPUESTA': 'propuesta', 'FOTO': 'leído en foto' })[e] || (/^DATO /.test(e || '') ? 'dato de la réplica' : (e || ''));
 const fmt = n => n.toLocaleString('es', { maximumFractionDigits: 1 });
 function avisarPadre(m) { if (parent !== window) parent.postMessage(m, location.origin); }
 
@@ -81,7 +83,7 @@ function calcularUso(m) {
   PR.subs = Object.fromEntries(m.subsistemas.map(s => [s.id, s.nombre]));
 }
 function textoUso(id) {
-  const x = uso[id]; if (!x) return 'aún no está en el modelo de redes (opción o pendiente)';
+  const x = uso[id]; if (!x) return 'aún no está en las redes de la réplica';
   const p = [];
   if (x.metros) p.push(fmt(x.metros) + ' m');
   if (x.equipos.length) p.push(x.equipos.length + (x.equipos.length === 1 ? ' equipo' : ' equipos'));
@@ -103,7 +105,7 @@ function pintar() {
   for (const [id, p] of lista) {
     if (p.sistema !== g) { g = p.sistema; const h = document.createElement('div'); h.className = 'grupo'; h.innerHTML = `<span class="pt" style="background:${(SIS[g] || [])[1] || '#999'}"></span>${(SIS[g] || [g])[0]}`; r.appendChild(h); }
     const d = document.createElement('div'); d.className = 'tarjeta' + (id === sel ? ' on' : ''); d.dataset.id = id;
-    d.innerHTML = `<div class="tipo">${p.tipo || ''} · ${id}</div><div class="marca">${p.marca || '—'}</div><div class="modelo">${p.modelo || '—'}</div>` +
+    d.innerHTML = `<div class="tipo">${TIPO(p.tipo)}${DIAG ? ' · ' + id : ''}</div><div class="marca">${p.marca || '—'}</div><div class="modelo">${p.modelo || '—'}</div>` +
       `<div class="uso">${textoUso(id)}</div><div class="pie"><span class="est ${esProp(p) ? 'prop' : ''}">${etiqueta(p.estado)}</span>${p.retirado ? '<span class="est ret">retirado</span>' : ''}${p.ficha_url ? '<span class="est">ficha ↗</span>' : ''}</div>`;
     d.onclick = () => abrir(id); r.appendChild(d);
   }
@@ -114,15 +116,16 @@ function abrir(id, desdeFuera) {
   document.querySelectorAll('.tarjeta').forEach(t => t.classList.toggle('on', t.dataset.id === id));
   const t = document.querySelector(`.tarjeta[data-id="${CSS.escape(id)}"]`); if (t && desdeFuera) t.scrollIntoView({ block: 'center' });
   const x = uso[id], med = p.medidas_mm ? Object.entries(p.medidas_mm).map(([k, v]) => `${k} ${v}`).join(' · ') + ' mm' : '—';
-  const filas = [['Sistema', (SIS[p.sistema] || [p.sistema])[0]], ['Tipo', p.tipo || '—'], ['SKU', p.sku || '—'], ['Medidas', med], ['Estado', etiqueta(p.estado)],
+  const filas = [['Sistema', (SIS[p.sistema] || [p.sistema])[0]], ['Tipo', TIPO(p.tipo) || '—'], ['SKU', p.sku || '—'], ['Medidas', med], ['Estado', etiqueta(p.estado)],
     ['En la casa', textoUso(id)], ['Redes', x ? [...x.subs].map(s => PR.subs[s] || s).join(', ') : '—']];
-  if (x && x.equipos.length) filas.push(['Piezas', x.equipos.map(e => e.objeto_central || e.id).join('<br>')]);
-  if (x && x.equipos.some(e => e.no_cubre)) filas.push(['Ojo', x.equipos.filter(e => e.no_cubre).map(e => e.no_cubre).join('<br>')]);
+  if (DIAG && x && x.equipos.length) filas.push(['Piezas', x.equipos.map(e => e.objeto_central || e.id).join('<br>')]);
+  if (DIAG && x && x.equipos.some(e => e.no_cubre)) filas.push(['Ojo', x.equipos.filter(e => e.no_cubre).map(e => e.no_cubre).join('<br>')]);
   if (p.retirado) filas.push(['Retirado', typeof p.retirado === 'string' ? p.retirado : 'sí']);
-  $('#detalle').innerHTML = `<button id="cerrar" title="Cerrar">×</button><div class="tipo" style="font-size:11px;color:var(--gris)">${id}</div>` +
+  if (p.archivo_local) filas.push(['Copia local', `<span style="font-size:11px;color:var(--gris)">${p.archivo_local}</span>`]);
+  $('#detalle').innerHTML = `<button id="cerrar" title="Cerrar">×</button>` +
     `<h2>${p.modelo || '—'}</h2><div class="marca">${p.marca || ''}</div><table>${filas.map(f => `<tr><td>${f[0]}</td><td>${f[1]}</td></tr>`).join('')}</table>` +
-    `<div class="acc">${x && x.dibujado && parent !== window ? '<button class="prim" id="ver3d">Ver en 3D</button>' : ''}${p.ficha_url ? `<a href="${p.ficha_url}" target="_blank" rel="noopener"><button>Ficha del fabricante ↗</button></a>` : ''}</div>` +
-    `<p style="font-size:11px;color:var(--gris);margin-top:14px">Catálogo de RT2: productos reales de EE. UU. con su fuente; «propuesta» = elegido por cálculo y pendiente de que Pipe apruebe el diseño.</p>`;
+    `<div class="acc">${x && x.dibujado && parent !== window ? '<button class="prim" id="ver3d">Ver en el modelo</button>' : ''}${p.ficha_url ? `<a href="${p.ficha_url}" target="_blank" rel="noopener"><button>Ficha del fabricante ↗</button></a>` : ''}</div>` +
+    `<p style="font-size:11px;color:var(--gris);margin-top:14px">Producto del mercado de EE. UU., con su fuente. «Propuesta»: elegido por cálculo para esta réplica. El catálogo es de la réplica y no describe lo instalado en la obra.</p>`;
   $('#detalle').classList.add('on');
   $('#cerrar').onclick = () => { $('#detalle').classList.remove('on'); sel = null; document.querySelectorAll('.tarjeta.on').forEach(t => t.classList.remove('on')); };
   const v = $('#ver3d'); if (v) v.onclick = () => avisarPadre({ virtu: 'ir', modulo: '3d', resaltar: id });
@@ -143,7 +146,7 @@ $('#buscar').addEventListener('input', pintar);
   const [c, m] = await Promise.all([fetch(CAT_URL).then(r => r.json()), fetch(MOD_URL).then(r => r.json())]);
   cat = c; calcularUso(m); PR.cat = cat; PR.uso = uso;
   const nProp = Object.values(cat).filter(esProp).length;
-  $('#aviso').innerHTML = `Redes técnicas calculadas por RT2 (7-nov-2026, <b>propuesta</b>): ${Object.keys(cat).length} productos, ${nProp} elegidos por cálculo y pendientes de aprobación. Cada tarjeta dice cuánto se usa en la casa; «Ver en 3D» lo resalta en el modelo.`;
+  $('#aviso').innerHTML = `${Object.keys(cat).length} productos de las redes de la réplica; ${nProp} son propuestas elegidas por cálculo. El catálogo no describe lo instalado en la obra.`;
   ponerFiltros(); pintar();
   const id = decodeURIComponent(location.hash.replace('#', '')); if (id && cat[id]) abrir(id, true);
   PR.listo = true;

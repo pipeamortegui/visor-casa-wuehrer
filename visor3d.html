@@ -1,12 +1,9 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Casa Wuehrer · 3D</title>
-<!-- IW1 (PRB-0002, 7-nov-2026): prototipo de visor web. Lee modelo/manifiesto.json; las capas, redes y el catalogo de productos salen de
-     ahi, asi que las redes completas de RT1 entran regenerando el manifiesto, sin tocar este archivo. three.js 0.160.0 fijo (jsdelivr). -->
+<title>Visor VIRTÙ · 3D</title>
 <style>
   /* Visor VIRTU v1 (7-nov-2026): identidad VIRTU (papel, tinta, terracota), escenas abajo, capas en un panel "Capas y ajustes" plegado. */
   :root { --bg:#F2EDE5; --panel:rgba(242,237,229,.95); --tinta:#1E1C1A; --suave:#7D776F; --linea:#D6CDBF; --acento:#9A5A2E; }
@@ -68,6 +65,21 @@
     body.axo #axo-lista h2 { display:none; } #axo-items { display:flex; gap:4px; } .ax { flex:none; padding:5px 9px; } .ax small { display:none; }
     body.axo #axo-barra { left:8px; right:8px; max-width:calc(100% - 16px); bottom:8px; }
   }
+  /* E10 (Pipe, 8-nov: «me gustaria tener las burbujas de los espacios para revisar la geometria ahi»): fila de circulos como la del 360, encima de la barra de escenas y a la izquierda de la planta */
+  #burbujas { position:fixed; left:10px; right:220px; bottom:60px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; pointer-events:none; }
+  #burbujas::-webkit-scrollbar { display:none; }
+  #burbujas.oculta { display:none; }
+  #burb-fila { display:flex; width:max-content; margin:0 auto; padding:26px 40px 24px; gap:8px; }
+  .mn, .mn.on { position:relative; flex:none; width:52px; height:52px; padding:0; border-radius:50%; background:#2A2826; border:2.5px solid #fff; box-shadow:0 1px 8px rgba(0,0,0,.45); pointer-events:auto; touch-action:pan-x; transition:transform .12s; }
+  .mn canvas { display:block; width:100%; height:100%; border-radius:50%; }
+  .mn.on { border-color:var(--acento); box-shadow:0 0 0 2px #fff, 0 1px 8px rgba(0,0,0,.45); }
+  .mn .nom { display:none; position:absolute; left:50%; bottom:calc(100% + 6px); transform:translateX(-50%); font-size:11.5px; line-height:1.5; color:#fff; background:rgba(30,28,26,.82); padding:0 8px; border-radius:8px; white-space:nowrap; font-weight:400; }
+  .mn.on .nom { display:block; top:calc(100% + 6px); bottom:auto; background:var(--acento); }
+  .mn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  @media (hover:hover) { .mn:hover { transform:scale(1.07); } .mn:hover .nom { display:block; } }
+  body.en-recinto #lienzo { cursor:grab; }
+  body.axo #burbujas { display:none !important; }
+  @media (max-width:700px) { #burbujas { left:8px; right:8px; bottom:50px; } .mn, .mn.on { width:44px; height:44px; } #burb-fila { gap:8px; } }
   #vistas2 { display:none; }
   @media (pointer:coarse) { #b-pie { display:none; } }          /* caminar pide teclado y raton: en pantallas tactiles se oculta (pendiente) */
   @media (max-width:700px) {
@@ -76,6 +88,11 @@
     #planta { display:none; } #escenas { bottom:8px; } #escenas button { padding:7px 12px; font-size:12px; } #hud { bottom:70px; }
   }
 </style>
+<link rel="preload" href="cristal/jost-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="cristal/base.css">
+<link rel="stylesheet" href="cristal/visor3d.css">
+<script src="cristal/accesible.js" defer></script>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
@@ -85,15 +102,16 @@
 <canvas id="lienzo"></canvas>
 <div id="mira"></div>
 <div id="herr" class="caja">
-  <button id="b-orbita" class="on" title="Girar alrededor de la casa">Órbita</button><button id="b-pie" title="Caminar dentro, a 1,60 m">A pie</button>
+  <button id="b-orbita" class="on" title="Girar alrededor de la casa">Órbita</button><button id="b-pie" title="Caminar dentro, a 1,60 m">A pie</button><button id="b-burb" class="on" title="Mostrar u ocultar los círculos de los espacios">Espacios</button>
   <span class="sep"></span><span id="vistas" class="botones" style="gap:5px"></span>
-  <span class="sep"></span><button id="b-panel" title="Capas, transparencia, sol y persiana">Capas y ajustes</button>
+  <span class="sep"></span><button id="b-panel" title="Capas, transparencia, sol y persiana">Capas</button>
 </div>
 <div id="aviso" class="caja"></div>
+<div id="burbujas"><div id="burb-fila"></div></div>
 <div id="escenas" class="caja">
   <button data-esc="arq" class="on" title="La casa como es">Arquitectura</button>
   <button data-esc="redes" title="Arquitectura casi transparente; cada red de su color">Redes</button>
-  <button id="b-noche" title="Cielo de noche y luminarias encendidas (aproximado; la noche real llega con los 360 V-Ray)">Noche</button>
+  <button id="b-noche" title="Cielo de noche y luminarias encendidas">Noche</button>
   <button id="b-pers" title="Persiana oeste: recogida, abierta o cerrada">Persiana <small id="pers-t">recogida</small></button>
 </div>
 <div id="panel" class="caja">
@@ -104,8 +122,8 @@
   <div class="fila"><input type="checkbox" id="rx"><label for="rx"><b>Rayos X</b>: ver las redes a través de la arquitectura</label></div>
   <div id="fuente-caja" style="display:none">
   <h2>Redes técnicas</h2>
-  <div class="fila"><input type="radio" name="fuente" id="fuente-rt2" value="rt2"><label for="fuente-rt2">Calculadas por RT2 <span class="mb">propuesta · producto por pieza</span></label></div>
-  <div class="fila"><input type="radio" name="fuente" id="fuente-v3n" value="v3n"><label for="fuente-v3n">Modelo v3n <span class="mb">D12 y RT1 v1</span></label></div>
+  <div class="fila"><input type="radio" name="fuente" id="fuente-rt2" value="rt2"><label for="fuente-rt2">Calculadas <span class="mb">propuesta, con producto por pieza</span></label></div>
+  <div class="fila"><input type="radio" name="fuente" id="fuente-v3n" value="v3n"><label for="fuente-v3n">Del modelo <span class="mb">como se dibujaron</span></label></div>
   <div id="capas-rt2"></div>
   </div>
   <h2>Capas</h2>
@@ -114,9 +132,8 @@
   <div class="fila"><label for="pers">Persiana oeste</label><select id="pers"><option>recogida</option><option>abierta</option><option>cerrada</option></select></div>
   <div class="fila"><input type="checkbox" id="sombras" checked><label for="sombras">Sombras del sol</label></div>
   <div class="fila"><label for="hora">Sol</label><input type="range" id="hora" min="0" max="100" value="38"></div>
-  <h2>Rendimiento</h2>
-  <div class="fila"><input type="checkbox" id="ver-hud"><label for="ver-hud">Mostrar cuadros por segundo y carga</label></div>
-  <div class="ayuda">Modelo: central v3n, exportado por IW1 (18 capas). Visor VIRTÙ v1.</div>
+  <h2 class="rend">Rendimiento</h2>
+  <div class="fila rend"><input type="checkbox" id="ver-hud"><label for="ver-hud">Mostrar cuadros por segundo y carga</label></div>
 </div>
 <div id="axo-lista" class="caja"><h2>Axonometrías</h2><div id="axo-items"></div></div>
 <div id="axo-barra" class="caja">
@@ -125,13 +142,13 @@
   <span id="axo-estilo" class="grupo"><button data-v="mat" class="on">Materiales</button><button data-v="maqueta">Maqueta</button></span>
   <span class="sep"></span>
   <label id="axo-sep-l">Separación <input type="range" id="axo-sep" min="0" max="9" step="0.1" value="4.5"></label>
-  <button id="axo-png" title="Descargar la vista como imagen (doble resolución)">PNG</button>
-  <button id="axo-3d" title="Volver al recorrido 3D">Ver en 3D</button>
+  <button id="axo-png" title="Descargar la vista como imagen">Descargar</button>
+  <button id="axo-3d" title="Volver al modelo">Volver al modelo</button>
 </div>
 <div id="ficha" class="caja"></div>
 <div id="planta" class="caja"><canvas id="cplanta" width="190" height="260"></canvas></div>
 <div id="hud">cargando…</div>
-<div id="carga"><div class="caja"><div class="logo">VIRT<i>Ù</i></div><b id="carga-t">Cargando la casa…</b><div id="carga-d" class="ayuda"></div><div id="barra"><i></i></div></div></div>
+<div id="carga"><div class="caja"><div class="logo">Casa Wuehrer</div><b id="carga-t">Cargando la casa…</b><div id="carga-d" class="ayuda"></div><div id="barra"><i></i></div></div></div>
 
 <script type="module">
 import * as THREE from 'three';
@@ -140,6 +157,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';   
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
+const DIAG = /[?&]diag=1/.test(location.search);
+const publica = r => DIAG || !['Pieza', 'Fuente', 'Ojo'].includes(r[0]);
 const BASE = 'modelo/';  // Visor VIRTU v1: consume el modelo de IW1 sin copiarlo (174 MB)
 const t0 = performance.now();
 const IW = window.IW = { stats: {}, capas: {}, listo: false, THREE };
@@ -285,6 +304,11 @@ function prepararVeg(m) {
 }
 
 // ---------------------------------------------------------------- panel
+// E13 (Pipe, 9-nov: «el visor no tiene todas las redes, no vi las hidrosanitarias»): nombres con tildes para las capas de red que trae el manifiesto
+const ETIQ_RED = { 'RED-HID-AF': ['Agua fría', 'Hidrosanitaria: agua fría'], 'RED-HID-AC': ['Agua caliente', 'Hidrosanitaria: agua caliente'], 'RED-HID-DES': ['Desagüe', 'Hidrosanitaria: desagüe'],
+  'RED-HID-VEN': ['Ventilación', 'Hidrosanitaria: ventilación'], 'RED-HID-PIS': ['Piscina', 'Hidrosanitaria: piscina'], 'RED-HID-OTR': ['Equipos y piezas', 'Hidrosanitaria: equipos y piezas sin subsistema'],
+  'RED-CAL': ['Calefacción', 'Calefacción'], 'RED-AIR': ['Aire y ventilación mecánica', 'Aire y ventilación mecánica'], 'RED-ELE': ['Eléctrica', 'Eléctrica'], 'RED-GAS': ['Gas', 'Gas'], 'RED-COM': ['Comunicaciones', 'Comunicaciones'] };
+for (const c of man.capas) if (ETIQ_RED[c.id]) { c.nombre = ETIQ_RED[c.id][1]; c.sistema_nombre = ETIQ_RED[c.id][1]; }
 const grupos = { arquitectura: 'Arquitectura', mobiliario: 'Mobiliario', sitio: 'Sitio', redes: 'Redes técnicas', detalle: 'Detalle' };
 for (const [gk, gn] of Object.entries(grupos)) {
   const cs = man.capas.filter(c => c.grupo === gk); if (!cs.length) continue;
@@ -391,26 +415,53 @@ function dibujarPlanta() {
 // ---------------------------------------------------------------- modos
 let modo = 'orbita'; const teclas = {};
 let yPie = 0, velY = 0;
+// E10: dentro de una burbuja se mira arrastrando (sin capturar el raton), para poder llegar a los circulos y a las fichas
+let recintoAct = null; const BURB = new Map();
+const sinCaptura = () => !!recintoAct || !!IW.sinBloqueo;
+function marcarBurbuja() { for (const [k, b] of BURB) b.classList.toggle('on', !!recintoAct && k === recintoAct.id); document.body.classList.toggle('en-recinto', !!recintoAct); }
 function ponerModo(m, en) {
+  recintoAct = (en && en.recinto) || null; marcarBurbuja();
+  camara.fov = recintoAct ? 75 : 50; camara.updateProjectionMatrix();     // adentro, angular: en un cuarto de 1,5 m con 50 grados solo se veria una pared
   modo = m; $('#b-orbita').classList.toggle('on', m === 'orbita'); $('#b-pie').classList.toggle('on', m === 'pie');
-  orbita.enabled = m === 'orbita'; $('#mira').style.display = m === 'pie' ? 'block' : 'none';
+  orbita.enabled = m === 'orbita'; $('#mira').style.display = 'none';
   if (m === 'pie') {
-    camara.near = 0.05; camara.updateProjectionMatrix();
+    camara.near = 0.05; camara.fov = 75; camara.updateProjectionMatrix();
     const p = en || { x: 4.5, z: -1.3, mira: -12 };     // comedor (Max x 4,5, y 1,3) mirando al norte: mesa, estar y sofa
     yPie = pisoEn(p.x, p.z); camara.position.set(p.x, yPie + 1.6, p.z); camara.lookAt(p.x, yPie + 1.6, p.mira);
-    aviso('Clic en la vista para mirar con el ratón (Esc suelta). W A S D o flechas para caminar, Mayús para ir rápido. Los muros y muebles detienen el paso; las puertas se atraviesan.', 9000);
+    aviso(matchMedia('(pointer: coarse)').matches ? 'Arrastra para mirar, como en el recorrido. Toca el piso para caminar hasta ahí.' : 'Arrastra para mirar, como en el recorrido. Clic en el piso para caminar hasta ahí; también W A S D o flechas. La rueda acerca.', 7000);
   } else {
-    camara.near = 0.3; camara.updateProjectionMatrix(); if (pie.isLocked) pie.unlock();
+    camara.near = 0.3; camara.fov = 50; camara.updateProjectionMatrix(); if (pie.isLocked) pie.unlock(); destino = null; anilloPie.visible = false;
   }
 }
 let tAviso = null;
 function aviso(txt, ms = 6000) { const a = $('#aviso'); a.textContent = txt; a.classList.add('ver'); clearTimeout(tAviso); tAviso = setTimeout(() => a.classList.remove('ver'), ms); }
 IW.aviso = aviso;
 $('#b-orbita').onclick = () => { ponerModo('orbita'); vista('exterior'); };
-$('#b-pie').onclick = () => ponerModo('pie');
-lienzo.addEventListener('click', () => { if (modo === 'pie' && !pie.isLocked && !IW.sinBloqueo) pie.lock(); });
+$('#b-pie').onclick = () => { if (recintoAct) { recintoAct = null; marcarBurbuja(); aviso('Sigues en el mismo lugar.', 4000); return; } ponerModo('pie'); };
+lienzo.addEventListener('click', () => { if (modo === 'pie' && !pie.isLocked && !sinCaptura()) pie.lock(); });
 addEventListener('keydown', e => { teclas[e.code] = true; }); addEventListener('keyup', e => { teclas[e.code] = false; });
-IW.modo = ponerModo; IW.teclas = teclas;
+IW.modo = ponerModo; IW.teclas = teclas; IW.sinBloqueo = true;
+// A pie como en el recorrido 360: lon y lat con la misma formula (grados = pixeles * fov / alto)
+let arrPie = null;
+const dirPie = () => { const d = new THREE.Vector3(); camara.getWorldDirection(d); return [THREE.MathUtils.radToDeg(Math.atan2(d.z, d.x)), THREE.MathUtils.radToDeg(Math.asin(d.y))]; };
+function mirarPie(lon, lat) { const ph = THREE.MathUtils.degToRad(90 - lat), th = THREE.MathUtils.degToRad(lon), p = camara.position; camara.lookAt(p.x + Math.sin(ph) * Math.cos(th), p.y + Math.cos(ph), p.z + Math.sin(ph) * Math.sin(th)); }
+lienzo.addEventListener('pointerdown', e => { if (modo !== 'pie') return; const [lon, lat] = dirPie(); arrPie = [e.clientX, e.clientY, lon, lat]; lienzo.setPointerCapture(e.pointerId); lienzo.style.cursor = 'grabbing'; });
+lienzo.addEventListener('pointermove', e => { if (!arrPie || modo !== 'pie') return; const f = camara.fov / lienzo.clientHeight; mirarPie(arrPie[2] - (e.clientX - arrPie[0]) * f, Math.max(-85, Math.min(85, arrPie[3] + (e.clientY - arrPie[1]) * f))); });
+const soltarPie = () => { arrPie = null; lienzo.style.cursor = modo === 'pie' ? 'grab' : ''; };
+lienzo.addEventListener('pointerup', soltarPie); lienzo.addEventListener('pointercancel', soltarPie);
+lienzo.addEventListener('wheel', e => { if (modo !== 'pie') return; camara.fov = Math.max(30, Math.min(100, camara.fov + e.deltaY * 0.05)); camara.updateProjectionMatrix(); e.preventDefault(); }, { passive: false });
+// caminar hasta donde se hizo clic en el piso; el anillo marca el destino y el paso respeta muros y muebles
+let destino = null;
+const anilloPie = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.235, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .85, depthTest: false, side: THREE.DoubleSide })); anilloPie.rotation.x = -Math.PI / 2; anilloPie.visible = false; anilloPie.renderOrder = 5; scene.add(anilloPie);
+function irAlPiso(p) {
+  ray.setFromCamera(p, camara); const obj = []; for (const L of Object.values(IW.capas)) if (L.grupo.visible) obj.push(L.grupo);
+  const h = ray.intersectObjects(obj, true).find(x => visibleArriba(x.object) && !x.object.material.transparent); const nota = t => { IW.pieControl.ultimo = t; return false; }; if (!h || !h.face) return nota('sin golpe');
+  const n = h.face.normal.clone().transformDirection(h.object.matrixWorld), pf = pisoEn(h.point.x, h.point.z); IW.pieControl.ultimo = { y: +h.point.y.toFixed(3), piso: +pf.toFixed(3), ny: +n.y.toFixed(3), capa: h.object.userData.capaId || h.object.name };
+  if (Math.abs(n.y) < .8) return nota('no es piso: ' + JSON.stringify(IW.pieControl.ultimo)); if (Math.abs(h.point.y - pf) > .3) return nota('altura: ' + JSON.stringify(IW.pieControl.ultimo)); if (!libre(h.point.x, h.point.z, pf)) return nota('ocupado');
+  destino = { x: h.point.x, z: h.point.z }; anilloPie.position.set(h.point.x, h.point.y + .02, h.point.z); anilloPie.visible = true; return true;
+}
+IW.pieControl = { vista: () => { const [lon, lat] = dirPie(); return { lon, lat, fov: camara.fov, x: camara.position.x, z: camara.position.z, modo, destino: !!destino }; },
+  aPantalla: m => { const d = new THREE.Vector3(); camara.getWorldDirection(d); d.y = 0; d.normalize(); const x = camara.position.x + d.x * m, z = camara.position.z + d.z * m, y = pisoEn(x, z), v = new THREE.Vector3(x, y, z).project(camara); return { sx: (v.x + 1) / 2 * innerWidth, sy: (1 - v.y) / 2 * innerHeight, libre: libre(x, z, y) }; } };
 const VISTAS = {
   exterior: { pos: [-15, 7.5, 10], obj: [4, 1.2, -14] },
   sur: { pos: [10, 6, 30], obj: [4, 1.5, -10] },
@@ -428,11 +479,13 @@ function mover(dt) {
   let f = 0, s = 0;
   if (teclas.KeyW || teclas.ArrowUp) f += 1; if (teclas.KeyS || teclas.ArrowDown) f -= 1;
   if (teclas.KeyD || teclas.ArrowRight) s += 1; if (teclas.KeyA || teclas.ArrowLeft) s -= 1;
-  if (!pie.isLocked && !IW.sinBloqueo) { if (teclas.ArrowLeft) camara.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), 1.6 * dt); if (teclas.ArrowRight) camara.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), -1.6 * dt); s = 0; }
+  if (!pie.isLocked && !sinCaptura()) { if (teclas.ArrowLeft) camara.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), 1.6 * dt); if (teclas.ArrowRight) camara.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), -1.6 * dt); s = 0; }
   const fw = new THREE.Vector3(); camara.getWorldDirection(fw); fw.y = 0; fw.normalize();
   const rt = new THREE.Vector3().crossVectors(fw, new THREE.Vector3(0, 1, 0));
   const d = fw.multiplyScalar(f).add(rt.multiplyScalar(s)); if (d.lengthSq() > 0) d.normalize().multiplyScalar(rapido * dt);
   const p = camara.position;
+  if (f || s) { destino = null; anilloPie.visible = false; }
+  else if (destino) { const dx = destino.x - p.x, dz = destino.z - p.z, dist = Math.hypot(dx, dz); if (dist < .06) { destino = null; anilloPie.visible = false; } else { const paso = Math.min(dist, 2.6 * dt); d.set(dx / dist * paso, 0, dz / dist * paso); if (!libre(p.x + d.x, p.z, yPie) && !libre(p.x, p.z + d.z, yPie)) { destino = null; anilloPie.visible = false; } } }
   if (d.x && libre(p.x + d.x, p.z, yPie)) p.x += d.x;
   if (d.z && libre(p.x, p.z + d.z, yPie)) p.z += d.z;
   const fl = pisoEn(p.x, p.z);
@@ -447,6 +500,7 @@ lienzo.addEventListener('pointerdown', e => { abajo = [e.clientX, e.clientY]; })
 lienzo.addEventListener('pointerup', e => {
   if (!abajo || Math.hypot(e.clientX - abajo[0], e.clientY - abajo[1]) > 4) return;
   if (modo === 'pie' && pie.isLocked) ptr.set(0, 0); else ptr.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1);
+  if (modo === 'pie' && irAlPiso(ptr)) return;
   elegir(ptr);
 });
 function visibleArriba(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
@@ -473,9 +527,9 @@ function elegir(p) {
   const L = IW.capas[u.capaId]; const sis = u.sistema || (L && L.def.sistema);
   const prod = productoDe(nombre, u.tipo);
   const fil = [['Pieza', nombre], ['Capa', L ? L.def.nombre : u.capa], ['Sistema', sis ? (man.capas.find(c => c.sistema === sis) || {}).sistema_nombre || sis : '—'],
-    ['Material', u.familia || '—'], ['Descripción', u.descripcion || '—'], ['Producto', prod ? `${prod.marca || ''} ${prod.modelo || ''}`.trim() + (prod.id ? ` <span style="color:var(--suave)">[${prod.id}]</span>` : '') + (prod.ficha_url ? ` · <a href="${prod.ficha_url}" target="_blank" rel="noopener">ficha ↗</a>` : '') : (IW.rt2 && IW.rt2.listo ? 'sin producto en el catálogo RT2' : 'cargando catálogo…')],
+    ['Material', (u.familia || '—').replace(/^WUE-/, '').replace(/[-_]/g, ' ')], ['Descripción', u.descripcion || '—'], ['Producto', prod ? `${prod.marca || ''} ${prod.modelo || ''}`.trim()  + (prod.ficha_url ? ` · <a href="${prod.ficha_url}" target="_blank" rel="noopener">ficha ↗</a>` : '') : (IW.rt2 && IW.rt2.listo ? 'sin producto en el catálogo' : 'sin catálogo de productos en esta versión')],
     ['Medidas', `${(b.max.x - b.min.x).toFixed(3)} × ${(b.max.z - b.min.z).toFixed(3)} × ${(b.max.y - b.min.y).toFixed(3)} m`], ['Fuente', u.fuente || u.chat || '—']];
-  $('#ficha').innerHTML = '<div class="t"><span>Ficha</span><button id="ficha-x" title="Cerrar">×</button></div><table>' + fil.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>' +
+  $('#ficha').innerHTML = '<div class="t"><span>Ficha</span><button id="ficha-x" title="Cerrar">×</button></div><table>' + fil.filter(publica).map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>' +
     '<div class="ayuda">Medidas: caja en x, y (norte), z de la pieza elegida.</div>' +
     (window.parent !== window ? `<div style="margin-top:6px"><span class="enlace" id="ficha-prod">Ver en Productos →</span></div>` : '');
   $('#ficha').style.display = 'block';
@@ -506,6 +560,7 @@ const reloj = new THREE.Clock(); let cuadros = 0, tVent = performance.now(), msA
 function bucle() {
   const dt = Math.min(reloj.getDelta(), 0.1); const ta = performance.now();
   if (IW.modoAxo) { IW.orbitaAxo.update(); if (maqueta) opacidadAristas(); } else if (modo === 'orbita') orbita.update(); else mover(dt);
+  if (miniPend && !IW.modoAxo) pintarMiniaturas();
   renderer.render(scene, camActiva);
   dibujarPlanta();
   cuadros++; msAcum += performance.now() - ta;
@@ -538,13 +593,37 @@ function ponerEscena(e) {
   ESTADO.escena = e;
   document.querySelectorAll('#escenas [data-esc]').forEach(b => b.classList.toggle('on', b.dataset.esc === e));
   if (typeof quitarResalte === 'function') quitarResalte();
-  if (e === 'redes') { const RA = redesActivas(); for (const id of todasRedes()) if (!RA.includes(id)) capaVisible(id, false); for (const id of RA) capaVisible(id, true); IW.rayosX(true);
+  if (e === 'redes') { const RA = redesActivas(); for (const id of todasRedes()) if (!RA.includes(id)) capaVisible(id, false); for (const id of RA) capaVisible(id, true); IW.rayosX(true); aplicarFiltroRedes(); orbita.maxPolarAngle = Math.PI * 0.98; document.getElementById('redes-filtro').style.display = 'block';
     const faltan = RA.filter(id => !IW.capas[id]).length;
     aviso(faltan ? `Las redes terminan de cargar (${faltan} de ${RA.length} en camino)…` : 'Arquitectura casi transparente; cada red con el color de su sistema. Clic sobre un tubo o un equipo: su ficha.'); }
-  else { IW.rayosX(false); for (const id of todasRedes()) capaVisible(id, false); for (const id of TECHO) capaVisible(id, true); if (typeof marca !== 'undefined') marca.visible = false; }
+  else { IW.rayosX(false); document.getElementById('redes-filtro').style.display = 'none'; orbita.maxPolarAngle = Math.PI * 0.495; if (camara.position.y < 0.5) vista('exterior'); for (const id of todasRedes()) capaVisible(id, false); for (const id of TECHO) capaVisible(id, true); if (typeof marca !== 'undefined') marca.visible = false; }
   renderer.shadowMap.needsUpdate = true; publicarEstado();
 }
 IW.escena = ponerEscena;
+// E13: en «Redes», ver cada red por separado y mirar desde abajo de la losa. Las capas y sus colores salen del manifiesto.
+const FILTRO_RED = {};
+function aplicarFiltroRedes() { if (ESTADO.escena !== 'redes') return; for (const id of REDES) capaVisible(id, FILTRO_RED[id] !== false); renderer.shadowMap.needsUpdate = true; }
+IW.filtroRedes = (id, v) => { FILTRO_RED[id] = v; aplicarFiltroRedes(); const cb = document.querySelector(`#redes-filtro [data-red="${id}"]`); if (cb) cb.checked = v; refrescarMaestro(); };
+function refrescarMaestro() { const m = document.querySelector('#redes-filtro [data-maestro]'); if (!m) return; const h = REDES.filter(id => id.startsWith('RED-HID-')), n = h.filter(id => FILTRO_RED[id] !== false).length; m.checked = n === h.length; m.indeterminate = n > 0 && n < h.length; }
+function vistaBajoLosa() { ponerModo('orbita'); orbita.maxPolarAngle = Math.PI * 0.98; camara.position.set(-20, -12, -6); orbita.target.set(4, -0.3, -18); orbita.update(); }
+IW.vistaBajoLosa = vistaBajoLosa;
+(function armarBarraRedes() {
+  const b = document.createElement('div'); b.id = 'redes-filtro'; b.className = 'caja';
+  b.style.cssText = 'position:fixed;left:12px;top:64px;z-index:30;display:none;padding:10px 12px;border-radius:12px;max-height:calc(100vh - 230px);overflow:auto;width:210px;font-size:12px';
+  const col = id => (man.capas.find(c => c.id === id) || {}).color;
+  const fila = (id, txt, sub) => `<label style="display:flex;gap:7px;align-items:center;padding:3px 0;cursor:pointer;${sub ? 'margin-left:18px;' : ''}"><input type="checkbox" data-red="${id}" checked><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:${col(id)}"></span>${txt}</label>`;
+  const hid = REDES.filter(id => id.startsWith('RED-HID-')), otras = REDES.filter(id => !id.startsWith('RED-HID-'));
+  b.innerHTML = '<div style="font-weight:700;margin-bottom:4px">Redes</div>' +
+    (hid.length ? '<label style="display:flex;gap:7px;align-items:center;padding:3px 0;cursor:pointer;font-weight:600"><input type="checkbox" data-maestro checked>Hidrosanitaria</label>' + hid.map(id => fila(id, ETIQ_RED[id][0], true)).join('') : '') +
+    otras.map(id => fila(id, (ETIQ_RED[id] || [id])[0], false)).join('') +
+    '<button id="b-bajo-losa" style="margin-top:8px;width:100%" title="Mirar la casa desde abajo de la losa">Ver desde abajo</button>';
+  document.body.appendChild(b);
+  b.addEventListener('change', e => { const t = e.target;
+    if (t.dataset.maestro !== undefined) for (const id of hid) { FILTRO_RED[id] = t.checked; b.querySelector(`[data-red="${id}"]`).checked = t.checked; }
+    else if (t.dataset.red) FILTRO_RED[t.dataset.red] = t.checked;
+    aplicarFiltroRedes(); refrescarMaestro(); });
+  b.querySelector('#b-bajo-losa').onclick = vistaBajoLosa;
+})();
 document.querySelectorAll('#escenas [data-esc]').forEach(b => b.onclick = () => ponerEscena(b.dataset.esc));
 // Noche aproximada: cielo oscuro, sin sol, relleno calido bajo y luminarias encendidas (emisivas). La noche de verdad sale de los 360 V-Ray (PI1).
 const DIA = { fondo: 0xc9dbe8, hemiI: hemi.intensity, ambI: amb.intensity, ambC: amb.color.getHex(), solI: sol.intensity, exp: renderer.toneMappingExposure };
@@ -584,7 +663,7 @@ function ponerNoche(n) {
   for (const m of IW.vegRelleno) m.emissiveIntensity = n ? VEG_RELLENO.noche : VEG_RELLENO.dia;
   if (n) IW.lucesNoche = armarLucesNoche(); else lucesNoche.clear();
   document.body.classList.toggle('noche', n); $('#b-noche').classList.toggle('on', n);
-  if (n) aviso('Noche aproximada del visor 3D: sirve para ubicarse. La noche con luz real llega con los 360 V-Ray.');
+  if (n) aviso('Noche aproximada, para ubicarse. La noche con luz real está en el Recorrido.');
   renderer.shadowMap.needsUpdate = true; publicarEstado();
 }
 IW.ponerNoche = ponerNoche;
@@ -619,7 +698,7 @@ function mirarA(m) {
   if (m.caja) { const w = Math.max(0.3, m.caja[2] - m.caja[0]), d = Math.max(0.3, m.caja[3] - m.caja[1]);
     marca.position.set((m.caja[0] + m.caja[2]) / 2, 1.7, -(m.caja[1] + m.caja[3]) / 2); marca.scale.set(w, 3.8, d); marca.visible = true; } else marca.visible = false;
   for (const id of TECHO) capaVisible(id, false); renderer.shadowMap.needsUpdate = true;    // sin cubierta ni cielo para ver adentro
-  aviso((m.etiqueta ? m.etiqueta + ': ' : '') + 'la caja terracota marca la zona del detalle (ubicación del índice de detalles). Sin cubierta para ver adentro; «Arquitectura» la devuelve.', 9000);
+  aviso((m.etiqueta ? m.etiqueta + ': ' : '') + 'la caja marca la zona del detalle. Sin cubierta para ver adentro; «Arquitectura» la devuelve.', 9000);
 }
 IW.mirarA = mirarA; IW.marca = marca;
 // caminar desde un punto de la planta (x este, y norte) mirando a un rumbo (0 norte, 90 este): lo usa "Ver en 3D" del 360
@@ -628,9 +707,10 @@ IW.irA = (x, y, az) => { if (IW.modoAxo) modoAxo(false); ponerModo('pie', { x, z
 
 // ---------------------------------------------------------------- Axonometrias (Visor VIRTU E4): la misma escena con camara ortografica
 // Cada axonometria es una receta de capas (las que se ven, las que quedan en fantasma, separacion de la explotada); nada se renderiza aparte.
-const PAPEL = 0xF2EDE5, niebla = scene.fog;
+const PAPEL = 0x0B0B0A, niebla = scene.fog;
 const camAxo = new THREE.OrthographicCamera(-10, 10, 10, -10, 1, 600);
-const orbitaAxo = new OrbitControls(camAxo, lienzo); orbitaAxo.enabled = false; orbitaAxo.enableDamping = true; orbitaAxo.screenSpacePanning = true;
+const orbitaAxo = new OrbitControls(camAxo, lienzo); orbitaAxo.enabled = false; orbitaAxo.enableDamping = true; orbitaAxo.screenSpacePanning = true; orbitaAxo.zoomToCursor = true; orbitaAxo.minZoom = 0.6; orbitaAxo.maxZoom = 40;
+camAxo.updateProjectionMatrix = function () { const z = this.zoom; this.projectionMatrix.makeOrthographic(this.left / z, this.right / z, this.top / z, this.bottom / z, this.near, this.far); this.projectionMatrixInverse.copy(this.projectionMatrix).invert(); };   // escala alrededor del eje de la camara, que pasa por el centro de la casa
 IW.orbitaAxo = orbitaAxo; IW.camAxo = camAxo;
 const NOMBRE_RED = { CAL: 'Calefacción', AIR: 'Aire acondicionado', ELE: 'Eléctrica', PLO: 'Plomería', GAS: 'Gas' };
 const FANTASMA = ['ARQ-LOSA', 'ARQ-MUROS', 'ARQ-ESTRUCTURA'];
@@ -644,7 +724,7 @@ const AXOS = [
     explota: { 'ARQ-LOSA': 0, 'ARQ-ESTRUCTURA': 1, 'ARQ-MUROS': 2, 'ARQ-CARPINTERIA': 2, 'ARQ-PROTECCION-SOLAR': 2, 'ARQ-CIELO': 3, 'ARQ-CUBIERTA': 4 } },
   { id: 'redes', nombre: 'Todas las redes', nota: 'cada sistema con su color', capas: REDES, fantasma: FANTASMA, colorRedes: true, encuadre: FANTASMA },
   ...REDES.map(id => { const c = man.capas.find(x => x.id === id);
-    return { id: id.toLowerCase(), nombre: NOMBRE_RED[c.sistema] || c.sistema_nombre, nota: 'red ' + c.sistema, color: c.color, capas: [id], fantasma: FANTASMA, colorRedes: true, encuadre: FANTASMA }; }),
+    return { id: id.toLowerCase(), nombre: NOMBRE_RED[c.sistema] || c.sistema_nombre, nota: '', color: c.color, capas: [id], fantasma: FANTASMA, colorRedes: true, encuadre: FANTASMA }; }),
 ].map(a => ({ ...a, capas: a.capas.filter(id => man.capas.some(c => c.id === id)) }));
 IW.AXOS = AXOS;
 let axoSep = 4.5, axoOrient = 'so', maqueta = false, axoTocado = false, tReenc = null;
@@ -689,7 +769,7 @@ function aplicarAxo(p, sinEncuadre) {
   $('#axo-sep-l').style.display = p.explota ? '' : 'none';
   if (!sinEncuadre) { axoTocado = false; encuadrarAxo(); avisarPadre({ virtu: 'axo', id: p.id }); }
   const faltan = p.capas.map(mapRed).filter(id => !IW.capas[id]).length;
-  if (faltan && !sinEncuadre) aviso(`Faltan ${faltan} capas por bajar; entran solas al llegar.`, 4000);
+  if (faltan && !sinEncuadre) aviso('Terminando de cargar el modelo…', 4000);
 }
 const DIRS = { so: [-1, -1], se: [1, -1], ne: [1, 1], no: [-1, 1] };     // (x este, y norte) desde donde se mira
 function encuadrarAxo() {
@@ -782,7 +862,7 @@ function aristasDeMalla(o) {
   o.add(l); return geo.attributes.position.count / 2;
 }
 function trabajarAristas() {            // por tandas de ~12 ms para no congelar la pagina
-  if (!ARISTAS.cola.length) { ARISTAS.trabajando = false; if (ARISTAS.avisar) { aviso(`Aristas listas: ${ARISTAS.segmentos.toLocaleString('es')} segmentos en ${(ARISTAS.ms / 1000).toFixed(1)} s.`, 4000); ARISTAS.avisar = false; } actualizarAristas(); return; }
+  if (!ARISTAS.cola.length) { ARISTAS.trabajando = false; if (ARISTAS.avisar) {  ARISTAS.avisar = false; } actualizarAristas(); return; }
   ARISTAS.trabajando = true; const t0 = performance.now();
   while (ARISTAS.cola.length && performance.now() - t0 < 12) { const [id, o] = ARISTAS.cola.shift(); ARISTAS.segmentos += aristasDeMalla(o); ARISTAS.capas[id].hechas++; }
   ARISTAS.ms += performance.now() - t0; actualizarAristas(); setTimeout(trabajarAristas, 0);
@@ -863,7 +943,7 @@ function armarRT2(m, cat) {
     hacer(geoA, matE, te, t => M.compose(X3(t.pos), Q.identity(), S.set(0.035, 0.035, 0.035)));      // puntos de consumo: tomas, grifos, luminarias
     hacer(geoE, matE, eq, e => { const lo = X3(e.caja_lo), hi = X3(e.caja_hi), c = lo.clone().add(hi).multiplyScalar(0.5);
       M.compose(c, Q.identity(), S.set(Math.max(Math.abs(hi.x - lo.x), 0.02), Math.max(Math.abs(hi.y - lo.y), 0.02), Math.max(Math.abs(hi.z - lo.z), 0.02))); });
-    const def = { id, nombre: (NOMBRE_RED[capa.sistema] || capa.sistema_nombre) + ' · RT2', grupo: 'redes', color: capa.color, sistema: capa.sistema, sistema_nombre: capa.sistema_nombre,
+    const def = { id, nombre: (NOMBRE_RED[capa.sistema] || capa.sistema_nombre) + ' (calculada)', grupo: 'redes', color: capa.color, sistema: capa.sistema, sistema_nombre: capa.sistema_nombre,
       inicial: false, visible: false, rt2: true, bytes: 0, bytes_texturas: 0 };
     man.capas.push(def); g.visible = false; g.userData.capa = def; scene.add(g);
     IW.capas[id] = { def, grupo: g, mats, opacidad: 1 }; RT2.capas.push(id);
@@ -884,13 +964,13 @@ function cargarRT2() {
 function ponerFuente(f) {
   IW.fuenteRedes = f; for (const id of todasRedes()) capaVisible(id, false);
   if (IW.modoAxo && IW.axoActual) aplicarAxo(IW.axoActual); else if (ESTADO.escena === 'redes') ponerEscena('redes');
-  aviso(f === 'rt2' ? 'Redes calculadas por RT2 (PROPUESTA): tramos con su diámetro y producto; equipos como cajas.' : 'Redes del modelo v3n (D12 y lo de RT1 v1).', 5000);
+  aviso(f === 'rt2' ? 'Redes calculadas, como propuesta: tramos con su diámetro y producto; equipos como cajas.' : 'Redes como se dibujaron en el modelo.', 5000);
 }
 document.querySelectorAll('input[name=fuente]').forEach(r => r.addEventListener('change', e => ponerFuente(e.target.value)));
 IW.ponerFuente = ponerFuente;
 // ficha de una pieza RT2
-const etiquetaEstado = e => ({ 'PROPUESTA': 'propuesta RT2', 'DATO-FABRICANTE': 'dato del fabricante' })[e] || e;
-function productoTexto(pid) { const p = RT2.cat[pid]; if (!p) return pid ? pid + ' (sin ficha en el catálogo)' : '—';
+const etiquetaEstado = e => ({ 'PROPUESTA': 'propuesta', 'DATO-FABRICANTE': 'dato del fabricante' })[e] || (/^D\d|^DATO/.test(e || '') ? 'dato de la réplica' : e);
+function productoTexto(pid) { const p = RT2.cat[pid]; if (!p) return pid ? 'sin ficha en el catálogo' : '—';
   return `${p.marca || ''} ${p.modelo || ''}`.trim() + ` <span style="color:var(--suave)">[${pid}]</span>` + (p.ficha_url ? ` · <a href="${p.ficha_url}" target="_blank" rel="noopener">ficha ↗</a>` : ''); }
 function fichaRT2(h) {
   const o = h.object, it = o.userData.rt2[h.instanceId], L = IW.capas[o.userData.capaId]; const b = new THREE.Box3();
@@ -906,7 +986,7 @@ function fichaRT2(h) {
   const fil = [['Pieza', it.id], ['Red', (L ? L.def.nombre : '') + (it.subsistema ? ' · ' + (RT2.subs[it.subsistema] || it.subsistema) : '')], ['Tipo', tipo], ['Producto', productoTexto(it.producto)],
     ['Medidas', medidas], ['Estado', etiquetaEstado(it.estado)]];
   if (it.no_cubre) fil.push(['Ojo', it.no_cubre]);
-  $('#ficha').innerHTML = '<div class="t"><span>Ficha · redes RT2</span><button id="ficha-x" title="Cerrar">×</button></div><table>' + fil.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>' +
+  $('#ficha').innerHTML = '<div class="t"><span>Ficha de la red</span><button id="ficha-x" title="Cerrar">×</button></div><table>' + fil.filter(publica).map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>' +
     (window.parent !== window && it.producto ? `<div style="margin-top:6px"><span class="enlace" id="ficha-prod">Ver en Productos →</span></div>` : '');
   $('#ficha').style.display = 'block';
   $('#ficha-x').onclick = () => { $('#ficha').style.display = 'none'; caja.visible = false; };
@@ -936,7 +1016,7 @@ function resaltarProducto(pid) {
   const p = RT2.cat[pid] || {};
   if (n) { const c = b.getCenter(new THREE.Vector3()), r = Math.max(4, b.getSize(new THREE.Vector3()).length() * 0.62);
     ponerModo('orbita'); camara.position.set(c.x - 0.7 * r, c.y + 0.75 * r, c.z + 0.6 * r); orbita.target.copy(c); orbita.update(); }
-  aviso(n ? `${n} piezas de ${(p.marca || '') + ' ' + (p.modelo || pid)} en naranja. «Arquitectura» o «Redes» quita el resalte.` : `${p.modelo || pid}: no tiene piezas dibujadas en las redes de RT2.`, 9000);
+  aviso(n ? `${n} piezas de ${(p.marca || '') + ' ' + (p.modelo || pid)} en naranja. «Arquitectura» o «Redes» quita el resalte.` : `${p.modelo || pid}: no tiene piezas dibujadas en las redes.`, 9000);
   return n;
 }
 function quitarResalte() { if (!RT2.resaltado) return; RT2.resaltado = null;
@@ -944,21 +1024,70 @@ function quitarResalte() { if (!RT2.resaltado) return; RT2.resaltado = null;
     if (im.userData.m0) { im.instanceMatrix.array.set(im.userData.m0); im.instanceMatrix.needsUpdate = true; } } }
 IW.resaltarProducto = resaltarProducto;
 
+// ---------------------------------------------------------------- E10: burbujas por recinto (datos: preparar_burbujas_recintos.py)
+// Pipe, 8-nov: «me gustaria tener las burbujas de los espacios para revisar la geometria ahi». Clic: la camara queda dentro del espacio, a 1,60 m del piso.
+const RECINTOS_JSON = 'recintos3d/recintos3d_v3p_r2_b.json';
+let recintos = [], miniPend = false;
+IW.recintos = () => recintos;
+IW.recintoActual = () => recintoAct;
+function irRecinto(q) {
+  if (IW.modoAxo) modoAxo(false);
+  if (pie.isLocked) pie.unlock();
+  ponerModo('pie', { x: q.x, z: -q.y, mira: -q.y - 1, recinto: q });
+  yPie = q.piso; velY = 0;
+  const a = THREE.MathUtils.degToRad(q.az);
+  camara.position.set(q.x, yPie + 1.6, -q.y);
+  camara.lookAt(q.x + Math.sin(a), yPie + 1.6, -q.y - Math.cos(a));
+  const b = BURB.get(q.id); if (b) { const c = $('#burbujas'); c.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - c.clientWidth / 2, behavior: 'smooth' }); }
+  aviso(q.nombre + (matchMedia('(pointer:coarse)').matches ? ': arrastra para mirar; toca una pieza para ver su ficha con medidas.' : ': arrastra para mirar, W A S D para caminar, clic en una pieza para ver su ficha con medidas.'), 6000);
+}
+IW.irRecinto = (id) => { const q = recintos.find(r => r.id === id); if (q) irRecinto(q); return !!q; };
+// las miniaturas se dibujan aqui mismo desde el modelo cargado: si el modelo cambia, cambian con el
+function pintarMiniaturas() {
+  miniPend = false; if (!recintos.length || IW.modoAxo) return 0;
+  const W = 104, sz = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(), cam = new THREE.PerspectiveCamera(78, 1, 0.05, camara.far);
+  renderer.setPixelRatio(1); renderer.setSize(W, W, false);
+  for (const q of recintos) { const a = THREE.MathUtils.degToRad(q.az);
+    cam.position.set(q.x, q.piso + 1.6, -q.y); cam.lookAt(q.x + Math.sin(a), q.piso + 1.6, -q.y - Math.cos(a)); cam.updateMatrixWorld(); renderer.render(scene, cam);
+    const b = BURB.get(q.id); if (b) b.querySelector('canvas').getContext('2d').drawImage(lienzo, 0, 0, W, W); }
+  renderer.setPixelRatio(pr); renderer.setSize(sz.x, sz.y);
+  return recintos.length;
+}
+IW.pintarMiniaturas = pintarMiniaturas;
+fetch(RECINTOS_JSON).then(r => r.ok ? r.json() : null).then(d => {
+  if (!d) return; recintos = d.burbujas; IW.datosRecintos = d;
+  for (const q of recintos) { const b = document.createElement('button'); b.className = 'mn'; b.setAttribute('aria-label', q.nombre); b.dataset.id = q.id;
+    b.innerHTML = `<canvas width="104" height="104"></canvas><span class="nom">${q.nombre}</span>`;
+    b.onclick = (e) => { irRecinto(q); if (e.detail) b.blur(); }; $('#burb-fila').appendChild(b); BURB.set(q.id, b); }
+  if (IW.stats.carga_inicial_s) miniPend = true;
+}).catch(() => {});
+$('#burbujas').addEventListener('wheel', e => { const c = $('#burbujas'); if (c.scrollWidth > c.clientWidth) { c.scrollLeft += e.deltaY || e.deltaX; e.preventDefault(); } }, { passive: false });
+$('#b-burb').onclick = () => { const o = $('#burbujas').classList.toggle('oculta'); $('#b-burb').classList.toggle('on', !o); };
+// dentro de una burbuja: arrastrar para mirar, en el mismo sentido que el 360
+let arrMira = null; const eMira = new THREE.Euler(0, 0, 0, 'YXZ');
+
+addEventListener('pointermove', e => { if (!arrMira || !recintoAct) return; const k = THREE.MathUtils.degToRad(camara.fov) / lienzo.clientHeight;
+  eMira.setFromQuaternion(camara.quaternion); eMira.y += (e.clientX - arrMira[0]) * k; eMira.x = Math.max(-1.45, Math.min(1.45, eMira.x + (e.clientY - arrMira[1]) * k));
+  camara.quaternion.setFromEuler(eMira); arrMira = [e.clientX, e.clientY]; });
+addEventListener('pointerup', () => { arrMira = null; }); addEventListener('pointercancel', () => { arrMira = null; });
+
 // carga inicial (con progreso) y luego el resto en segundo plano
 const ini = man.capas.filter(c => c.inicial), resto = man.capas.filter(c => !c.inicial && c.visible);
 for (const id of REDES) capaVisible(id, false);      // escena inicial "Arquitectura": las redes bajan en segundo plano pero quedan ocultas
 $('#pers-t').textContent = $('#pers').value;
 const prog = {};
-$('#carga-d').textContent = `${ini.length} capas, ${(man.pesos.inicial_mb).toFixed(0)} MB`;
+
 await Promise.all(ini.map(c => cargarCapa(c, (e) => { prog[c.id] = e.loaded; const s = Object.values(prog).reduce((a, b) => a + b, 0);
   $('#barra i').style.width = Math.min(100, 100 * s / pesoIni) + '%'; })));
 renderer.shadowMap.needsUpdate = true;
 requestAnimationFrame(bucle);
 IW.stats.carga_inicial_s = +((performance.now() - t0) / 1000).toFixed(1);
 $('#carga').style.display = 'none';
-cargarRT2();                // redes RT2 en paralelo con el resto de las capas
+miniPend = true;            // miniaturas con la arquitectura; se repiten cuando llega el mobiliario
+// v3p: se ven las redes del central (capas RED-*); la propuesta RT2 anterior no se carga para no taparlas
 for (const c of resto) await cargarCapa(c);
 IW.stats.carga_total_s = +((performance.now() - t0) / 1000).toFixed(1);
+miniPend = true;
 IW.listo = true;
 </script>
 </body>

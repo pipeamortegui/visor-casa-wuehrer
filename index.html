@@ -1,204 +1,184 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Casa Wuehrer</title>
-<!-- Visor VIRTU v1, etapa E1 "cascara" (PRB-0002, 7-nov-2026). Portada + barra de modulos; el modulo 3D es visor3d.html (copia vestida del
-     visor de IW1) en un marco que solo se carga al entrar. 360, Planos, Axonometrias y Productos: avisos de etapa hasta que lleguen. Sin publicar. -->
-<style>
-:root { --papel:#F2EDE5; --papel2:#E9E2D7; --tinta:#1E1C1A; --gris:#7D776F; --linea:#D6CDBF; --terra:#9A5A2E; --barra:48px; }
-* { box-sizing:border-box; }
-html, body { margin:0; height:100%; background:var(--papel); color:var(--tinta); font:14px/1.45 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; overflow:hidden; }
-a { color:var(--terra); }
-/* barra superior */
-#barra { position:fixed; left:0; right:0; top:0; height:var(--barra); display:flex; align-items:center; gap:8px; padding:0 14px; background:rgba(242,237,229,.97); border-bottom:1px solid var(--linea); z-index:10; }
-.logo { font-weight:800; letter-spacing:.16em; font-size:16px; color:var(--tinta); text-decoration:none; cursor:pointer; }
-.logo i { font-style:normal; color:var(--terra); }
-.obra { color:var(--gris); font-size:12.5px; padding-left:10px; border-left:1px solid var(--linea); white-space:nowrap; }
-#modulos { display:flex; gap:4px; margin-left:14px; }
-#modulos a { text-decoration:none; color:var(--gris); padding:6px 13px; border-radius:18px; font-size:13.5px; white-space:nowrap; }
-#modulos a:hover { color:var(--tinta); background:var(--papel2); }
-#modulos a.on { background:var(--tinta); color:#fff; }
-#modulos a .pr { font-size:10px; opacity:.7; margin-left:3px; }
-.sp { flex:1; }
-.marca { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--gris); white-space:nowrap; }
-/* vistas */
-main { position:fixed; left:0; right:0; top:var(--barra); bottom:0; }
-.vista { position:absolute; inset:0; display:none; }
-.vista.on { display:block; }
-/* inicio */
-#v-inicio { background:#cfc8bc url(img/portada_ad05.jpg) center 62% / cover no-repeat; }
-.velo { position:absolute; left:0; top:0; bottom:0; width:min(600px, 100%); background:linear-gradient(90deg, rgba(242,237,229,.97) 0 66%, rgba(242,237,229,.75) 82%, rgba(242,237,229,0) 100%); padding:44px 40px 24px; overflow:auto; }
-.velo .eti { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--terra); font-weight:700; }
-.velo h1 { font-size:40px; line-height:1.05; margin:8px 0 6px; font-weight:700; letter-spacing:-.01em; }
-.velo .sub { color:var(--gris); font-size:13px; }
-.velo p.lead { font-size:17px; line-height:1.4; margin:18px 0 22px; max-width:420px; }
-.tarjetas { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; max-width:420px; }
-.tarjeta { display:block; text-decoration:none; color:var(--tinta); background:#fff; border:1px solid var(--linea); border-radius:10px; padding:11px 12px; cursor:pointer; transition:border-color .15s, transform .15s; }
-.tarjeta:hover { border-color:var(--gris); transform:translateY(-1px); }
-.tarjeta b { display:block; font-size:14px; }
-.tarjeta span { font-size:12px; color:var(--gris); }
-.tarjeta.prim { background:var(--tinta); color:#fff; border-color:var(--tinta); grid-column:1 / -1; padding:14px 14px; }
-.tarjeta.prim b { font-size:16px; } .tarjeta.prim span { color:#d9d1c4; }
-.tarjeta .et { float:right; font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--terra); background:#F3E2D1; border-radius:8px; padding:1px 6px; }
-.pie { position:absolute; left:0; right:0; bottom:0; padding:7px 16px; font-size:10.5px; color:#efe9df; background:linear-gradient(0deg, rgba(20,18,16,.55), rgba(20,18,16,0)); text-align:right; pointer-events:none; }
-/* 3D */
-#v-3d iframe, #v-planos iframe, #v-productos iframe, #v-360 iframe { width:100%; height:100%; border:0; display:block; background:var(--papel); }
-/* modulos en preparacion */
-.prep { height:100%; overflow:auto; display:grid; place-items:center; padding:24px; }
-.prep .hoja { max-width:820px; width:100%; display:grid; grid-template-columns:1fr 1.1fr; gap:28px; align-items:center; }
-.prep img { width:100%; border-radius:10px; border:1px solid var(--linea); display:block; }
-.prep .eti { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--terra); font-weight:700; }
-.prep h2 { font-size:28px; margin:6px 0 10px; }
-.prep ul { padding-left:18px; margin:8px 0; } .prep li { margin:3px 0; }
-.prep .estado { display:inline-block; font-size:11px; color:var(--terra); background:#F3E2D1; border-radius:10px; padding:2px 9px; margin-top:8px; }
-.prep .pedido { margin-top:12px; font-size:12.5px; background:#fff; border:1px solid var(--linea); border-radius:8px; padding:8px 10px; display:none; }
-.prep .boton { display:inline-block; margin-top:14px; text-decoration:none; background:var(--tinta); color:#fff; border-radius:18px; padding:7px 14px; font-size:13px; }
-/* ficha del proyecto */
-#proyecto { position:fixed; inset:0; background:rgba(30,28,26,.45); display:none; align-items:center; justify-content:center; z-index:20; padding:16px; }
-#proyecto.on { display:flex; }
-#proyecto .caja { background:var(--papel); border-radius:12px; max-width:680px; width:100%; max-height:90%; overflow:auto; padding:24px 26px; position:relative; }
-#proyecto h3 { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--terra); margin:16px 0 6px; }
-#proyecto h3:first-of-type { margin-top:0; }
-#proyecto table { border-collapse:collapse; width:100%; font-size:13px; }
-#proyecto td { padding:3px 0; vertical-align:top; border-bottom:1px solid var(--linea); } #proyecto td:first-child { color:var(--gris); width:110px; }
-#proyecto .cerrar { position:absolute; right:12px; top:8px; border:0; background:none; font-size:22px; color:var(--gris); cursor:pointer; }
-#proyecto p { font-size:13px; margin:4px 0; }
-#modulos a .c { display:none; }
-/* celular: modulos abajo */
-@media (max-width:820px) {
-  .obra, .marca { display:none; }
-  #modulos { position:fixed; left:0; right:0; bottom:0; height:52px; margin:0; background:rgba(242,237,229,.98); border-top:1px solid var(--linea); justify-content:space-around; align-items:center; padding:0 4px; z-index:10; }
-  #modulos a { padding:6px 9px; font-size:12.5px; } #modulos a .pr { display:none; }
-  main { bottom:52px; }
-  .velo { width:100%; padding:24px 18px; background:rgba(242,237,229,.93); }
-  .velo h1 { font-size:32px; } .velo p.lead { font-size:15px; margin:12px 0 16px; }
-  #v-inicio { background:var(--papel) url(img/portada_ad05.jpg) center top / 100% auto no-repeat; overflow:auto; }
-  #v-inicio .velo { position:relative; top:auto; bottom:auto; margin-top:min(62vw, 300px); min-height:calc(100% - min(62vw, 300px)); overflow:visible;
-    background:linear-gradient(180deg, rgba(242,237,229,0) 0, var(--papel) 36px); padding-top:30px; }
-  .prep .hoja { grid-template-columns:1fr; } .prep { place-items:start center; }
-  .pie { display:none; }
-  #modulos a .l { display:none; } #modulos a .c { display:inline; }
-}
-</style>
+<meta name="description" content="Réplica de estudio de una obra de Engelking Architects.">
+<meta name="theme-color" content="#0F0F11">
+<link rel="preload" href="cristal/jost-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="cristal/bodoni-moda-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" as="image" href="img/portada_atardecer_ps_v1.jpg" fetchpriority="high">
+<link rel="stylesheet" href="cristal/base.css">
+<link rel="stylesheet" href="cristal/sitio.css">
 </head>
 <body>
 <header id="barra">
-  <a class="logo" href="#/inicio" title="Inicio">VIRT<i>Ù</i></a>
-  <span class="obra">Casa Wuehrer</span>
-  <nav id="modulos">
-    <a href="#/3d" data-m="3d">3D</a>
-    <a href="#/360" data-m="360">360</a>
-    <a href="#/planos" data-m="planos">Planos</a>
-    <a href="#/axo" data-m="axo"><span class="l">Axonometrías</span><span class="c">Axo</span></a>
-    <a href="#/productos" data-m="productos">Productos</a>
+  <a class="marca" href="#/inicio">Casa Wuehrer</a>
+  <nav class="solo-portada caps" aria-label="Secciones">
+    <a href="#/360">Recorrido</a><a href="#/3d">Modelo</a><a href="#/planos">Planos</a><a href="#/axo">Axonometrías</a><a href="#/productos">Productos</a>
   </nav>
-  <span class="sp"></span>
-  <span class="marca">Réplica de estudio</span>
+  <div class="der">
+    <a class="caps solo-portada" href="#/obra">La obra</a>
+    <a class="capsula caps solo-portada" href="#/360">Entrar a la casa</a>
+    <button id="b-indice" class="capsula vidrio caps" type="button" aria-haspopup="dialog" aria-expanded="false">Índice</button>
+  </div>
 </header>
 
 <main>
-  <section class="vista" id="v-inicio">
-    <div class="velo">
-      <div class="eti">Réplica de estudio VIRTÙ</div>
-      <h1>Casa Wuehrer</h1>
-      <div class="sub">Engelking Architects · Amagansett, Nueva York · 2018 · 232 m² · una planta</div>
-      <p class="lead">Una casa publicada, reconstruida pieza por pieza. Recórrela, ábrela por dentro y mira cómo está hecha: su arquitectura, sus redes y sus productos.</p>
-      <div class="tarjetas">
-        <a class="tarjeta prim" href="#/3d"><b>Recorrer en 3D</b><span>Gira alrededor, camina por dentro, vuelve transparente la casa y mira sus redes</span></a>
-        <a class="tarjeta" href="#/360"><b>Estar dentro</b><span>10 puntos en 360; el estar de día y de noche</span></a>
-        <a class="tarjeta" href="#/planos"><b>Planos</b><span>planos, detalles, redes y presentación</span></a>
-        <a class="tarjeta" href="#/axo"><b>Axonometrías</b><span>por sistema, redes y explotada</span></a>
-        <a class="tarjeta" href="#/productos"><b>Productos</b><span>133 productos de las redes, cada uno con su estado</span></a>
-        <a class="tarjeta" id="abrir-proyecto" style="grid-column:1 / -1"><b>El proyecto</b><span>la obra original, sus autores y qué es esta réplica</span></a>
+  <section class="vista" id="v-inicio" aria-label="Portada">
+    <div id="hero">
+      <div id="escena">
+        <img src="img/portada_atardecer_ps_v1.jpg" alt="El pabellón del comedor y el estar, de vidrio, encendido al atardecer" fetchpriority="high">
+        <h1 id="letra"><span id="letra-t">Casa <br><span class="par-w">W</span>uehrer</span></h1>
+        <img src="img/portada_recorte_ps_v1.webp" alt="" aria-hidden="true">
       </div>
+      <div class="velo"></div>
+      <div class="tarj t-obra vidrio">
+        <div class="tit">Réplica de estudio</div>
+        <p>de una obra de Engelking Architects</p>
+        <p class="lugar">Amagansett, Nueva York, 2018</p>
+      </div>
+      <a id="pin" class="vidrio" href="#/360" aria-label="Entrar a la casa"><span>Entrar a la casa</span></a>
+      <div class="tarj t-cifra vidrio"><b>232</b><span>m² en una planta,<br>24 módulos de madera</span></div>
+      <a id="bajar" class="circulo vidrio" href="#/obra" aria-label="Bajar a la obra">↓</a>
+      <div class="leyenda">Imagen generada de la réplica, con luz de atardecer ajustada. No es una fotografía de la obra.</div>
     </div>
-    <div class="pie">Render V-Ray de la réplica. No es una fotografía de la obra.</div>
+
+    <section id="laobra" aria-label="La obra">
+      <div class="eti caps">Obra original</div>
+      <div class="autoria">Engelking Architects</div>
+      <p class="autoria-sub">Casa Wuehrer, Amagansett, Nueva York, 2018. Esta página es una réplica de estudio, hecha desde lo publicado. No es la obra construida ni material de sus autores.</p>
+      <div class="cifras">
+        <div><b>232</b><span>m² netos</span></div>
+        <div><b>24</b><span>módulos en una barra</span></div>
+        <div><b>1,524</b><span>m por módulo</span></div>
+        <div><b>3,66</b><span>m de altura, una planta</span></div>
+      </div>
+      <div class="par">
+        <figure><img src="img/estar.jpg" alt="El estar, con el sofá y el patio al fondo" loading="lazy"><figcaption>El estar,<br>hacia el patio</figcaption></figure>
+        <ul class="lista">
+          <li><a href="#/360"><i>01</i><b>Recorrido</b><span>Diez puntos, de día y de noche</span></a></li>
+          <li><a href="#/3d"><i>02</i><b>Modelo</b><span>Camina por dentro, míralo por sistemas</span></a></li>
+          <li><a href="#/planos"><i>03</i><b>Planos</b><span id="n-planos">Planos, detalles y redes</span></a></li>
+          <li><a href="#/axo"><i>04</i><b>Axonometrías</b><span>Por sistema, redes y explotada</span></a></li>
+          <li><a href="#/productos"><i>05</i><b>Productos</b><span id="n-prod">Cada uno con su estado</span></a></li>
+        </ul>
+      </div>
+      <div class="ficha">
+        <h2>La obra</h2>
+        <dl>
+          <div><dt>Obra</dt><dd>Casa Wuehrer (Wuehrer House)</dd></div>
+          <div><dt>Arquitectos</dt><dd>Engelking Architects · Jerome Engelking, AIA</dd></div>
+          <div><dt>Lugar</dt><dd>Amagansett, East Hampton, Nueva York (EE. UU.)</dd></div>
+          <div><dt>Terminada</dt><dd>2018</dd></div>
+          <div><dt>Área</dt><dd>232 m² netos · 260 m² brutos</dd></div>
+          <div><dt>Módulo</dt><dd>5 pies (1,524 m) · altura 12 pies (3,66 m), una planta</dd></div>
+          <div><dt>Estructura</dt><dd>Pino amarillo del sur laminado; columna y montante del muro cortina en una sola pieza</dd></div>
+          <div><dt>Fachadas</dt><dd>Muro cortina Raico THERM+ H-I; persianas de pino termotratado al oeste; listones de cedro al este</dd></div>
+          <div><dt>Programa</dt><dd>Barra de 24 módulos: zona social al oeste, dormitorios al este, patio de entrada al centro</dd></div>
+        </dl>
+      </div>
+      <div class="ficha">
+        <h2>Créditos<br>de la obra</h2>
+        <dl>
+          <div><dt>Arquitecta de registro</dt><dd>Kirsten Youngren</dd></div>
+          <div><dt>Estructura</dt><dd>Stutzki Engineering</dd></div>
+          <div><dt>Instalaciones</dt><dd>Fusion Systems</dd></div>
+          <div><dt>Fachada estructural</dt><dd>IC2 technologies</dd></div>
+          <div><dt>Madera laminada</dt><dd>Art Massif</dd></div>
+          <div><dt>Montaje del marco</dt><dd>Les Constructions FGP</dd></div>
+          <div><dt>Fotografía</dt><dd>Nic Lehoux</dd></div>
+        </dl>
+      </div>
+      <div class="ficha">
+        <h2>La réplica</h2>
+        <p class="replica">Réplica de estudio hecha desde lo publicado (ArchDaily, Architect Magazine, The Plan, Architectural Record) y las fichas de los fabricantes. No es la obra construida ni material de sus autores: sirve para estudiar la casa y probar el método. Lo que no se publicó va marcado como propuesta.</p>
+      </div>
+      <footer class="fin"><span>Réplica de estudio de <span class="firma">VIRTÙ</span></span><a href="#/inicio" id="arriba">Volver arriba ↑</a></footer>
+    </section>
   </section>
-
   <section class="vista" id="v-3d"></section>
-
   <section class="vista" id="v-360"></section>
-
   <section class="vista" id="v-planos"></section>
-
   <section class="vista" id="v-axo"></section>
-
   <section class="vista" id="v-productos"></section>
 </main>
 
-<div id="proyecto"><div class="caja">
-  <button class="cerrar" id="cerrar-proyecto" title="Cerrar">×</button>
-  <h3>La obra original</h3>
-  <table>
-    <tr><td>Obra</td><td>Casa Wuehrer (Wuehrer House)</td></tr>
-    <tr><td>Arquitectos</td><td>Engelking Architects · Jerome Engelking, AIA</td></tr>
-    <tr><td>Lugar</td><td>Amagansett, East Hampton, Nueva York (EE. UU.)</td></tr>
-    <tr><td>Terminada</td><td>2018</td></tr>
-    <tr><td>Área</td><td>232 m² netos · 260 m² brutos</td></tr>
-    <tr><td>Módulo</td><td>5 pies (1,524 m) · altura 12 pies (3,66 m), una planta</td></tr>
-    <tr><td>Estructura</td><td>pino amarillo del sur laminado; columna y montante del muro cortina en una sola pieza</td></tr>
-    <tr><td>Fachadas</td><td>muro cortina Raico THERM+ H-I; persianas de pino termotratado al oeste; listones de cedro al este</td></tr>
-    <tr><td>Programa</td><td>barra de 24 módulos: zona social al oeste, dormitorios al este, patio de entrada al centro</td></tr>
-  </table>
-  <h3>Créditos de la obra</h3>
-  <p>Arquitecta de registro: Kirsten Youngren · Estructura: Stutzki Engineering · Instalaciones: Fusion Systems · Fachada estructural: IC2 technologies · Madera laminada: Art Massif · Montaje del marco: Les Constructions FGP · Fotografía: Nic Lehoux.</p>
-  <h3>La réplica</h3>
-  <p>Réplica de estudio de VIRTÙ, hecha desde lo publicado (ArchDaily, Architect Magazine, The Plan, Architectural Record) y las fichas de los fabricantes. No es la obra construida ni material de sus autores: sirve para estudiar la casa y probar el método. Lo que no se publicó va marcado como propuesta.</p>
-</div></div>
+<div id="indice" hidden role="dialog" aria-modal="true" aria-label="Índice">
+  <button class="cerrar capsula caps" type="button">Cerrar</button>
+  <nav aria-label="Secciones">
+    <a href="#/360" data-m="360">Recorrido</a>
+    <a href="#/3d" data-m="3d">Modelo</a>
+    <a href="#/planos" data-m="planos">Planos</a>
+    <a href="#/axo" data-m="axo">Axonometrías</a>
+    <a href="#/productos" data-m="productos">Productos</a>
+    <a href="#/obra" data-m="obra">La obra</a>
+  </nav>
+</div>
 
 <script>
-// ---------- navegacion por #/modulo (el boton atras del navegador funciona) ----------
+// ---------- portada: la letra se coloca sobre la casa. Las medidas las escribe construir_rediseno.py desde el render ----------
+const IM = {"w": 2000, "h": 1903, "techo": 0.2733, "puerta": [0.605, 0.515], "libre": [0.135, 0.795]};
+const $ = id => document.getElementById(id), esc = $('escena'), let_ = $('letra'), tx = $('letra-t'), hero = $('hero'), pin = $('pin'), inicio = $('v-inicio');
+function componer() {
+  const vw = hero.clientWidth, vh = hero.clientHeight; if (!vw || !vh) return;
+  const s = Math.max(vw / IM.w, vh / IM.h), W = IM.w * s, H = IM.h * s, movil = vw <= 820, sobra = H - vh, top = -Math.min(sobra, (movil ? 0 : 0.012) * H), techoV = top + IM.techo * H, navB = movil ? 74 : 72, x0 = (vw - W) / 2;
+  esc.style.cssText = `left:${x0}px;top:${top}px;width:${W}px;height:${H}px`;
+  let_.style.fontSize = '100px';
+  const zona = movil ? [vw * .035, vw * .965] : [Math.max(20, x0 + IM.libre[0] * W), Math.min(vw - 20, x0 + IM.libre[1] * W)], meta = zona[1] - zona[0], lineas = movil ? 2 : 1, t100 = tx.getBoundingClientRect().width || 300;
+  const fs = Math.min(100 * meta / t100, (techoV - navB) / (.74 + (lineas - 1) * .92));
+  let_.style.fontSize = fs + 'px'; let_.style.left = (zona[0] - x0) + 'px'; let_.style.width = meta + 'px';
+  let_.style.top = (IM.techo * H + fs * .035 - fs * .83 - fs * .92 * (lineas - 1)) + 'px';
+  pin.style.left = (x0 + IM.puerta[0] * W) + 'px'; pin.style.top = (top + IM.puerta[1] * H) + 'px';
+}
+new ResizeObserver(componer).observe(hero); document.fonts.ready.then(componer);
+const quieta = matchMedia('(prefers-reduced-motion:reduce)').matches;
+if (!quieta) inicio.addEventListener('scroll', () => { let_.style.transform = `translateY(${inicio.scrollTop * .22}px)`; document.body.classList.toggle('bajado', inicio.scrollTop > 60); }, { passive: true });
+else inicio.addEventListener('scroll', () => document.body.classList.toggle('bajado', inicio.scrollTop > 60), { passive: true });
+
+// ---------- navegacion por #/modulo: la misma del visor original (el boton atras del navegador funciona) ----------
 const MODULOS = ['inicio', '3d', '360', 'planos', 'axo', 'productos'];
+const NOMBRES = { '3d': 'Modelo', '360': 'Recorrido', planos: 'Planos', axo: 'Axonometrías', productos: 'Productos' };
 const VIRTU = window.VIRTU = { estado: { escena: 'arq', noche: false, persiana: 'recogida' }, modulo: null };
+const partesHash = () => (location.hash.replace(/^#\/?/, '') || 'inicio').split('/');
+const moduloDe = p => p === 'obra' ? 'inicio' : (MODULOS.includes(p) ? p : 'inicio');
 function ir() {
-  const partes = (location.hash.replace(/^#\/?/, '') || 'inicio').split('/');   // #/planos/det/D-07 abre esa lamina
-  let m = partes[0];
-  if (!MODULOS.includes(m)) m = 'inicio';
+  const partes = partesHash(), aObra = partes[0] === 'obra', m = moduloDe(partes[0]);
   VIRTU.modulo = m;
-  // las axonometrias usan el mismo motor 3D (un solo modelo en memoria): se muestra el marco del 3D en modo ortografico
-  // (#v-axo queda vacia y apagada: si se encendiera taparia el marco del 3D y se comeria el raton)
-  for (const id of MODULOS) document.getElementById('v-' + id).classList.toggle('on', id !== 'axo' && (id === m || (id === '3d' && m === 'axo')));
-  document.querySelectorAll('#modulos a').forEach(a => a.classList.toggle('on', a.dataset.m === m));
+  document.body.dataset.modulo = m;
+  for (const id of MODULOS) $('v-' + id).classList.toggle('on', id !== 'axo' && (id === m || (id === '3d' && m === 'axo')));
+  document.querySelectorAll('#indice a[data-m]').forEach(a => { if (a.dataset.m === partes[0]) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (m === '3d') { abrir3D(); al3D({ modo: '3d', noche: VIRTU.estado.noche }); }
   if (m === '360') abrir360(partes[1] && decodeURIComponent(partes[1]));
   if (m === 'axo') { abrir3D(); al3D({ modo: 'axo', axo: partes[1] }); }
   if (m === 'planos') abrirPlanos(partes[1], partes[2]);
   if (m === 'productos') abrirProductos(partes[1] && decodeURIComponent(partes[1]));
-  document.title = 'Casa Wuehrer' + (m === 'inicio' ? '' : ' · ' + document.querySelector(`#modulos a[data-m="${m}"]`).firstChild.textContent);
+  if (m === 'inicio') { componer(); inicio.scrollTo({ top: aObra ? $('laobra').offsetTop : 0, behavior: quieta ? 'auto' : 'smooth' }); }
+  document.title = 'Casa Wuehrer' + (m === 'inicio' ? '' : ' · ' + NOMBRES[m]);
 }
-// el 3D (43 MB) se carga solo la primera vez que se entra; despues queda vivo al cambiar de modulo
-function abrir3D() {
-  const v = document.getElementById('v-3d'); if (v.querySelector('iframe')) return;
-  const f = document.createElement('iframe'); f.src = 'visor3d.html'; f.title = 'Casa Wuehrer en 3D'; f.allow = 'fullscreen';
-  v.appendChild(f); VIRTU.marco3d = f;
-  setTimeout(() => f.focus(), 300);
+function abrir3D() {   // el modelo es lo mas pesado: se carga solo la primera vez que se entra
+  const v = $('v-3d'); if (v.querySelector('iframe')) return;
+  const f = document.createElement('iframe'); f.src = 'visor3d.html'; f.title = 'Casa Wuehrer: modelo'; f.allow = 'fullscreen';
+  v.appendChild(f); VIRTU.marco3d = f; setTimeout(() => f.focus(), 300);
 }
-// los planos (mosaicos de cada lamina) tambien van en su marco y se cargan al entrar
 function abrirPlanos(juego, codigo) {
-  const v = document.getElementById('v-planos'); let f = v.querySelector('iframe');
-  if (!f) { f = document.createElement('iframe'); f.src = 'planos.html' + (juego ? '#' + juego + '/' + (codigo || '') : ''); f.title = 'Planos de Casa Wuehrer';
-    v.appendChild(f); VIRTU.marcoPlanos = f; return; }
+  const v = $('v-planos'); let f = v.querySelector('iframe');
+  if (!f) { f = document.createElement('iframe'); f.src = 'planos.html' + (juego ? '#' + juego + '/' + (codigo || '') : ''); f.title = 'Casa Wuehrer: planos'; v.appendChild(f); VIRTU.marcoPlanos = f; return; }
   if (juego && VIRTU.lamina && (VIRTU.lamina.juego !== juego || VIRTU.lamina.codigo !== codigo)) f.contentWindow.postMessage({ virtu: 'lamina', juego, codigo }, location.origin);
 }
-// 360: recorrido en su marco; abre en el estado compartido (de noche si el visor esta de noche) y en #/360/<punto>
 function abrir360(clave) {
-  const v = document.getElementById('v-360'); let f = v.querySelector('iframe');
-  if (!f) { f = document.createElement('iframe'); f.src = 'tour360.html' + (VIRTU.estado.noche ? '?noche=1' : '') + (clave ? '#' + encodeURIComponent(clave) : '');
-    f.title = 'Casa Wuehrer en 360'; v.appendChild(f); VIRTU.marco360 = f; return; }
+  const v = $('v-360'); let f = v.querySelector('iframe');
+  if (!f) { f = document.createElement('iframe'); f.src = 'tour360.html' + (VIRTU.estado.noche ? '?noche=1' : '') + (clave ? '#' + encodeURIComponent(clave) : ''); f.title = 'Casa Wuehrer: recorrido'; v.appendChild(f); VIRTU.marco360 = f; return; }
   f.contentWindow.postMessage({ virtu: 'estado360', noche: !!VIRTU.estado.noche }, location.origin);
   if (clave && VIRTU.punto360 !== clave) f.contentWindow.postMessage({ virtu: 'punto360-abrir', clave }, location.origin);
 }
-// productos: catalogo de RT2 en su marco; #/productos/<id> abre esa tarjeta
 function abrirProductos(id) {
-  const v = document.getElementById('v-productos'); let f = v.querySelector('iframe');
-  if (!f) { f = document.createElement('iframe'); f.src = 'productos.html' + (id ? '#' + encodeURIComponent(id) : ''); f.title = 'Productos de Casa Wuehrer';
-    v.appendChild(f); VIRTU.marcoProductos = f; return; }
+  const v = $('v-productos'); let f = v.querySelector('iframe');
+  if (!f) { f = document.createElement('iframe'); f.src = 'productos.html' + (id ? '#' + encodeURIComponent(id) : ''); f.title = 'Casa Wuehrer: productos'; v.appendChild(f); VIRTU.marcoProductos = f; return; }
   if (id && VIRTU.producto !== id) f.contentWindow.postMessage({ virtu: 'producto-abrir', id }, location.origin);
 }
-// pasarle una orden al 3D cuando ya este listo (si se acaba de abrir, espera a que arme su escena)
 function al3D(orden, intentos = 0) {
   const w = VIRTU.marco3d && VIRTU.marco3d.contentWindow;
   if (w && w.IW && w.IW.mirarA && w.IW.ponerModoAxo) {
@@ -211,8 +191,14 @@ function al3D(orden, intentos = 0) {
     return; }
   if (intentos < 120) setTimeout(() => al3D(orden, intentos + 1), 250);
 }
-addEventListener('hashchange', ir);
-// ---------- estado compartido: el 3D avisa cambios; los otros modulos lo leeran (360 abre de noche si el 3D esta de noche) ----------
+// paso entre modulos: la pagina se esmerila, se cambia y se aclara. Dentro de un modulo no hay parpadeo
+function cambio() {
+  const m = moduloDe(partesHash()[0]);
+  if (VIRTU.modulo === null || m === VIRTU.modulo || quieta) return ir();
+  document.body.classList.add('fundido');
+  setTimeout(() => { ir(); requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove('fundido'))); }, 520);
+}
+addEventListener('hashchange', cambio);
 addEventListener('message', ev => {
   if (ev.origin !== location.origin || !ev.data) return;
   const d = ev.data;
@@ -223,21 +209,25 @@ addEventListener('message', ev => {
     if (d.modulo === '3d' && d.resaltar) al3D({ resaltar: d.resaltar });
     if (d.modulo === '3d' && d.pie) al3D({ pie: d.pie });
   }
-  if (d.virtu === 'axo' && VIRTU.modulo === 'axo' && location.hash.startsWith('#/axo')) history.replaceState(null, '', '#/axo/' + d.id);   // la direccion lleva la axonometria
+  if (d.virtu === 'axo' && VIRTU.modulo === 'axo' && location.hash.startsWith('#/axo')) history.replaceState(null, '', '#/axo/' + d.id);
   if (d.virtu === 'punto360') { VIRTU.punto360 = d.clave; if (VIRTU.modulo === '360' && location.hash.startsWith('#/360')) history.replaceState(null, '', '#/360/' + encodeURIComponent(d.clave)); }
   if (d.virtu === 'producto') { VIRTU.producto = d.id; if (VIRTU.modulo === 'productos' && location.hash.startsWith('#/productos')) history.replaceState(null, '', '#/productos/' + encodeURIComponent(d.id)); }
-  if (d.virtu === 'lamina') {          // el modulo de planos avisa que lamina se ve: queda en la direccion (se puede copiar y compartir)
-    VIRTU.lamina = { juego: d.juego, codigo: d.codigo };
-    if (VIRTU.modulo === 'planos' && location.hash.startsWith('#/planos')) history.replaceState(null, '', '#/planos/' + d.juego + '/' + d.codigo);
-  }
+  if (d.virtu === 'lamina') { VIRTU.lamina = { juego: d.juego, codigo: d.codigo }; if (VIRTU.modulo === 'planos' && location.hash.startsWith('#/planos')) history.replaceState(null, '', '#/planos/' + d.juego + '/' + d.codigo); }
 });
-// ---------- ficha del proyecto ----------
-const fp = document.getElementById('proyecto');
-document.getElementById('abrir-proyecto').onclick = () => fp.classList.add('on');
-document.getElementById('cerrar-proyecto').onclick = () => fp.classList.remove('on');
-fp.addEventListener('click', e => { if (e.target === fp) fp.classList.remove('on'); });
-addEventListener('keydown', e => { if (e.key === 'Escape') fp.classList.remove('on'); });
-ir();
+// ---------- indice: foco adentro, Esc cierra y devuelve el foco ----------
+const ind = $('indice'), bInd = $('b-indice'); let previo = null;
+const verIndice = si => { if (si) { previo = document.activeElement; ind.hidden = false; ind.querySelector('.cerrar').focus(); } else { ind.hidden = true; if (previo && previo.isConnected) previo.focus(); } bInd.setAttribute('aria-expanded', si); };
+bInd.onclick = () => verIndice(true); ind.querySelector('.cerrar').onclick = () => verIndice(false);
+ind.querySelectorAll('a').forEach(a => a.addEventListener('click', () => verIndice(false)));
+ind.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); verIndice(false); }
+  if (e.key === 'Tab') { const f = [...ind.querySelectorAll('a[href], button')], a = f[0], z = f[f.length - 1]; if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); } } });
+// si se vuelve a pedir el mismo destino (por ejemplo, La obra estando ya en la portada), igual se mueve
+document.querySelectorAll('a[href="#/obra"], a[href="#/inicio"]').forEach(a => a.addEventListener('click', () => { if (a.getAttribute('href') === location.hash) setTimeout(ir, 0); }));
+// cifras tomadas de los datos, para que no se desactualicen al cargar los planos definitivos
+fetch('planos/planos.json').then(r => r.json()).then(j => { $('n-planos').textContent = j.juegos.reduce((s, x) => s + x.laminas.length, 0) + ' láminas'; }).catch(() => {});
+fetch('datos/catalogo_productos_rt2.json').then(r => r.json()).then(j => { $('n-prod').textContent = Object.keys(j).length + ', cada uno con su estado'; }).catch(() => {});
+ir(); componer();
+if (VIRTU.modulo === 'inicio' && !(navigator.connection && navigator.connection.saveData)) (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => { for (const u of ['tour360.html', 'tour360_4k.json', 'pan360_4k/estar_2k.jpg']) { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = u; document.head.appendChild(l); } });
 </script>
 </body>
 </html>

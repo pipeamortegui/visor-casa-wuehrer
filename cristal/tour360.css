@@ -1,0 +1,78 @@
+/* Cristal: recorrido. Panel de vidrio sobre el 360 en vivo; circulos abajo; la planta se llama con su boton y no tiene fondo. */
+:root { --panel:clamp(340px, 36vw, 540px); }
+html, body { background:var(--noche); color:var(--crema); font-size:16px; }
+button { background:none; border:0; border-radius:0; padding:0; color:inherit; cursor:pointer; font:inherit; }
+.caja { background:none; border:0; box-shadow:none; }
+#etiquetas { z-index:2; }
+#panel { position:fixed; left:0; top:0; bottom:0; width:var(--panel); z-index:6; padding:92px clamp(26px, 3vw, 46px) 28px; display:flex; flex-direction:column; background:linear-gradient(135deg, rgba(24,22,26,.3), rgba(24,22,26,.16)); -webkit-backdrop-filter:blur(26px) saturate(1.3); backdrop-filter:blur(26px) saturate(1.3); border-right:1px solid rgba(255,255,255,.2); transition:transform .75s cubic-bezier(.65,0,.2,1); }
+body.plegado #panel { transform:translateX(-100%); }
+.nombre { margin-top:auto; display:flex; align-items:flex-start; gap:18px; }
+.nombre i { font:200 30px/1.2 var(--sans); font-style:normal; color:var(--tenue); padding-top:7px; }
+#t-nombre { font:400 clamp(44px, 4.8vw, 74px)/1.0 var(--serif); font-variation-settings:'opsz' 72; letter-spacing:-.01em; }
+#t-nota { margin:18px 0 0; font-size:15px; line-height:1.36; }
+.linea { height:1px; background:var(--hilo); margin:24px 0; }
+#estados { position:static; margin:0; padding:0; width:auto; max-width:none; border-radius:0; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
+.seg { display:inline-flex; border:1px solid rgba(246,239,228,.42); border-radius:19px; padding:2px; }
+.seg button { height:32px; padding:0 15px; border-radius:16px; color:var(--crema); transition:background .35s, color .35s; white-space:nowrap; }
+.seg button.on { background:var(--crema); color:#17161a; }
+.quieto-txt { color:var(--tenue); font-size:14px; }
+.pieza { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-top:26px; gap:10px; }
+.reproductor { display:flex; align-items:center; gap:16px; }
+.reproductor button { width:30px; height:30px; font-size:19px; line-height:1; } .reproductor span { font-size:14px; color:var(--tenue); min-width:56px; text-align:center; font-variant-numeric:tabular-nums; }
+.capsula { display:inline-flex; align-items:center; height:38px; padding:0 20px; border-radius:19px; border:1px solid rgba(246,239,228,.5); transition:background .35s, color .35s; white-space:nowrap; }
+.capsula:hover { background:var(--crema); color:#17161a; }
+.circulo { width:52px; height:52px; border-radius:50%; display:grid; place-items:center; background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.06)); -webkit-backdrop-filter:blur(26px) saturate(1.3); backdrop-filter:blur(26px) saturate(1.3); border:1px solid rgba(255,255,255,.2); transition:transform .45s cubic-bezier(.2,.7,.2,1), background .35s; color:var(--crema); }
+.circulo:hover { transform:scale(1.08); }
+#plegar { position:fixed; top:50%; left:var(--panel); margin:-26px 0 0 -26px; z-index:7; font-size:17px; transition:left .75s cubic-bezier(.65,0,.2,1), transform .45s; }
+body.plegado #plegar { left:44px; }
+
+#mini { left:var(--panel); right:0; bottom:22px; z-index:5; transition:left .75s cubic-bezier(.65,0,.2,1); }
+body.plegado #mini { left:0; }
+#mini-fila { padding:32px 26px 5px; gap:11px; }
+.mn, .mn.on { width:50px; height:50px; padding:4px; background:rgba(255,255,255,.14); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,.36); box-shadow:none; transition:transform .45s cubic-bezier(.2,.7,.2,1), border-color .35s; }
+.mn.on { border:1.5px solid var(--crema); background:rgba(255,255,255,.3); box-shadow:none; }
+.mn .nom, .mn.on .nom { display:none; top:auto; bottom:calc(100% + 7px); background:rgba(20,20,24,.5); border-radius:12px; padding:1px 11px; font-size:13.5px; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+.mn.on .nom { display:none !important; }
+@media (hover:hover) { .mn:hover { transform:translateY(-3px); } .mn:hover .nom { display:block; } }
+
+#b-planta { position:fixed; right:calc(var(--m) + 112px); top:15px; width:52px; height:52px; padding:0; box-shadow:none; z-index:6; }
+#b-planta.on { background:rgba(255,255,255,.3); color:var(--crema); }
+#b-planta svg { width:24px; height:24px; overflow:visible; }
+#plano { right:var(--m); top:86px; z-index:5; }
+.ppt .d { fill:#fff; stroke:#17161a; stroke-width:.9; } .ppt:hover .d, .ppt:focus-visible .d { fill:#17161a; stroke:#fff; } .ppt.on .d { fill:#17161a; stroke:#fff; stroke-width:1.2; }
+#cono { fill:rgba(255,255,255,.42); stroke:#fff; stroke-width:.7; }
+#pl-nom { background:rgba(20,20,24,.6); border-radius:12px; font-size:13.5px; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); z-index:8; }
+
+.salto { z-index:2; }
+.salto .anillo, .salto:hover .anillo { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.14); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.65); box-shadow:none; position:relative; transition:transform .45s cubic-bezier(.2,.7,.2,1); }
+.salto .anillo::after { content:''; position:absolute; left:50%; top:50%; width:6px; height:6px; margin:-3px; border-radius:50%; background:#fff; }
+.salto:hover .anillo { transform:scale(1.14); }
+.salto span { display:block; width:fit-content; margin:7px auto 0; font-size:13.5px; padding:2px 11px; border-radius:12px; color:#fff; background:rgba(20,20,24,.4); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); opacity:0; transition:opacity .35s; white-space:nowrap; }
+.salto:hover span, .salto:focus-visible span { opacity:1; }
+@media (hover:none) { .salto span { opacity:1; } }
+.salto:focus-visible { outline:1px solid #fff; outline-offset:6px; }
+
+#carga { background:var(--noche); color:var(--crema); font:italic 400 30px/1 var(--serif); z-index:9; }
+#carga span { animation:respira 2.2s ease-in-out infinite; } @keyframes respira { 50% { opacity:.35; } }
+#fundido { transition:opacity .42s ease; z-index:2; background:#0a0a0c; }
+
+@media (max-width:1000px) and (min-width:761px) { .quieto-txt { display:none; } }
+@media (max-width:760px) {
+  #panel { left:0; right:0; top:auto; bottom:0; width:auto; padding:18px 18px 16px; border-right:0; border-top:1px solid rgba(255,255,255,.2); border-radius:22px 22px 0 0; background:linear-gradient(135deg, rgba(20,18,22,.56), rgba(20,18,22,.42)); }
+  body.plegado #panel { transform:translateY(100%); }
+  .nombre { margin-top:0; gap:10px; } .nombre i { font-size:18px; padding-top:4px; } #t-nombre { font-size:32px; padding-right:48px; } #t-nota { margin-top:7px; font-size:13.5px; } .linea { margin:12px 0; }
+  .seg button { height:32px; padding:0 12px; font-size:14.5px; } .pieza { margin-top:0; padding-top:12px; } #estados { gap:8px; } .quieto-txt { display:none; } .capsula { height:36px; padding:0 15px; font-size:14.5px; }
+  #plegar { top:auto; left:auto; right:14px; bottom:var(--alto-panel, 240px); margin:0 0 -23px 0; width:46px; height:46px; }
+  body.plegado #plegar { left:auto; bottom:18px; margin:0; }
+  #mini, body.plegado #mini { left:0; right:0; bottom:calc(var(--alto-panel, 240px) + 30px); } body.plegado #mini { bottom:74px; }
+  #mini-fila { padding:32px 16px 5px; margin:0; } .mn, .mn.on { width:46px; height:46px; }
+  #plano { top:76px; right:12px; }
+  #b-planta { right:calc(var(--m) + 98px); top:17px; width:46px; height:46px; }
+  .salto .anillo, .salto:hover .anillo { width:32px; height:32px; } .salto span { font-size:12.5px; }
+}
+@media (min-width:761px) and (max-height:500px) {   /* celular acostado */
+  :root { --panel:300px; }
+  #panel { padding:64px 20px 10px; } .nombre { margin-top:0; gap:8px; } .nombre i { font-size:18px; padding-top:3px; } #t-nombre { font-size:27px; } #t-nota { font-size:12.5px; margin-top:5px; } .linea { margin:7px 0; }
+  .seg button { height:26px; padding:0 9px; font-size:13px; } .quieto-txt { display:none; } .pieza { padding-top:6px; } .capsula { height:30px; padding:0 11px; font-size:13px; } .reproductor { gap:4px; } .reproductor span { min-width:42px; font-size:12.5px; }
+  #mini { bottom:6px; } #mini-fila { padding:30px 16px 2px; } .mn, .mn.on { width:40px; height:40px; padding:3px; }
+}
