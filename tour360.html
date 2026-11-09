@@ -79,6 +79,8 @@ button.on { background:var(--tinta); color:#fff; border-color:var(--tinta); } bu
 <div id="fundido"></div>
 <div id="mini"><div id="mini-fila"></div></div>
 <button id="b-planta" class="circulo" type="button" aria-controls="plano" aria-expanded="false" aria-label="Planta"><svg viewBox="-12 -12 24 24" aria-hidden="true"><circle r="10.5" fill="none" stroke="currentColor" stroke-width=".8"/><path id="aguja" d="M0-10.5V-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><rect x="-2.4" y="-5" width="4.8" height="10" fill="none" stroke="currentColor" stroke-width=".9"/></svg></button>
+<button id="b-giro" class="circulo" type="button" hidden aria-pressed="false" aria-label="Mover la vista con el celular"><svg viewBox="-12 -12 24 24" aria-hidden="true"><rect x="-4" y="-7" width="8" height="14" rx="1.6" fill="none" stroke="currentColor" stroke-width="1"/><path d="M-1.4 4.6h2.8" stroke="currentColor" stroke-width=".9" stroke-linecap="round"/><path d="M-7.6-3.6a9 9 0 0 0 0 7.2m-1.3-1.4l1.3 1.4l1.6-1M7.6 3.6a9 9 0 0 0 0-7.2m1.3 1.4l-1.3-1.4l-1.6 1" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<div id="giro-aviso" role="status" hidden></div>
 <div id="plano" class="caja" hidden><svg id="splano" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Planta de la casa con los puntos del recorrido"></svg></div>
 <div id="pl-nom"></div>
 <aside id="panel" aria-label="Controles del recorrido">
@@ -163,7 +165,7 @@ async function tourPI1(dir) { if (!tours[dir]) tours[dir] = fetch(dir + 'tour.js
 // ---------------------------------------------------------------- vista: lon 180 = centro del panorama = hacia donde mira la camara de V-Ray
 let lon = 180, lat = 0, fov = 75, arr = null;
 lienzo.addEventListener('pointerdown', e => { arr = [e.clientX, e.clientY, lon, lat]; lienzo.setPointerCapture(e.pointerId); lienzo.style.cursor = 'grabbing'; });
-lienzo.addEventListener('pointermove', e => { if (!arr) return; const f = fov / lienzo.clientHeight; lon = arr[2] - (e.clientX - arr[0]) * f; lat = Math.max(-85, Math.min(85, arr[3] + (e.clientY - arr[1]) * f)); });
+lienzo.addEventListener('pointermove', e => { if (!arr) return; const f = fov / lienzo.clientHeight; if (T3.giro && T3.giro.on) { lon -= (e.clientX - arr[0]) * f; arr[0] = e.clientX; return; } lon = arr[2] - (e.clientX - arr[0]) * f; lat = Math.max(-85, Math.min(85, arr[3] + (e.clientY - arr[1]) * f)); });
 lienzo.addEventListener('pointerup', () => { arr = null; lienzo.style.cursor = 'grab'; });
 lienzo.addEventListener('wheel', e => { fov = Math.max(30, Math.min(100, fov + e.deltaY * 0.05)); e.preventDefault(); }, { passive: false });
 function rumbo() { return ((est.punto.mira_az + (lon - 180)) % 360 + 360) % 360; }      // rumbo de la vista (0 norte, 90 este)
@@ -296,6 +298,35 @@ function dibujarPlano() {                                      // solo el cono c
   const R = dibPl.fuera[est.punto.clave] ? 9 : 20, p = g => [o.x + R * Math.cos(THREE.MathUtils.degToRad(g - 90)), o.y + R * Math.sin(THREE.MathUtils.degToRad(g - 90))], a = p(az - ab / 2), b = p(az + ab / 2);
   cono.setAttribute('d', `M${o.x.toFixed(1)} ${o.y.toFixed(1)}L${a[0].toFixed(1)} ${a[1].toFixed(1)}A${R} ${R} 0 ${ab > 180 ? 1 : 0} 1 ${b[0].toFixed(1)} ${b[1].toFixed(1)}Z`);
   T3.plano = { az: +az.toFixed(1), abertura: +ab.toFixed(1) }; $('#aguja').setAttribute('transform', 'rotate(' + az.toFixed(1) + ')');
+}
+
+// ---------------------------------------------------------------- giro del celular (Pipe, 9-nov-2026)
+const GIRO = T3.giro = { on: false, prev: null, ultimo: null, eventos: 0 }; T3.mirada = () => ({ lon, lat, fov });
+{ const b = $('#b-giro'), aviso = $('#giro-aviso'), D = Math.PI / 180, zee = new THREE.Vector3(0, 0, 1), q0 = new THREE.Quaternion(), q1 = new THREE.Quaternion(-Math.sqrt(.5), 0, 0, Math.sqrt(.5)),
+    eu = new THREE.Euler(), qd = new THREE.Quaternion(), vd = new THREE.Vector3(); let reloj;
+  if ((matchMedia('(pointer: coarse)').matches && 'DeviceOrientationEvent' in window) || QS.get('giro') === '1') b.hidden = false;
+  const avisar = t => { aviso.textContent = t; aviso.hidden = false; clearTimeout(reloj); reloj = setTimeout(() => { aviso.hidden = true; }, 3200); };
+  // orientacion del celular (alfa, beta, gama y giro de la pantalla) -> [lon, lat] de la vista, con la misma convencion que el arrastre
+  T3.giroDir = (al, be, ga, or) => { eu.set(be * D, al * D, -ga * D, 'YXZ'); qd.setFromEuler(eu).multiply(q1).multiply(q0.setFromAxisAngle(zee, -or * D)); vd.set(0, 0, -1).applyQuaternion(qd);
+    return [Math.atan2(vd.z, vd.x) / D, Math.asin(Math.max(-1, Math.min(1, vd.y))) / D]; };
+  // la ultima lectura se guarda aunque el giro este apagado: al activarlo se parte de ella y no se pierde el primer movimiento
+  addEventListener('deviceorientation', e => {
+    if (e.alpha === null || e.beta === null) return; GIRO.eventos++;
+    const or = (screen.orientation && screen.orientation.angle) || window.orientation || 0, [l, a] = GIRO.ultimo = T3.giroDir(e.alpha, e.beta, e.gamma || 0, or);
+    if (!GIRO.on) return;
+    if (GIRO.prev !== null && Math.abs(a) < 80) lon += ((l - GIRO.prev + 540) % 360) - 180;      // mirando al cenit o al piso el rumbo no se define: se espera
+    GIRO.prev = l; lat = Math.max(-85, Math.min(85, a));
+  });
+  const poner = si => { GIRO.on = si; GIRO.prev = si && GIRO.ultimo ? GIRO.ultimo[0] : null; if (si && GIRO.ultimo) lat = Math.max(-85, Math.min(85, GIRO.ultimo[1])); b.classList.toggle('on', si); b.setAttribute('aria-pressed', si); b.setAttribute('aria-label', si ? 'Dejar de mover con el celular' : 'Mover la vista con el celular'); };
+  b.onclick = async () => {
+    if (GIRO.on) return poner(false);
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      let r = 'denied'; try { r = await DeviceOrientationEvent.requestPermission(); } catch (e) {}
+      if (r !== 'granted') return avisar('Sin permiso para usar el movimiento del celular');
+    }
+    poner(true); avisar('Mueve el celular para mirar alrededor');
+    setTimeout(() => { if (GIRO.on && !GIRO.ultimo) { poner(false); avisar('Este equipo no informa su movimiento'); } }, 1500);
+  };
 }
 
 // ---------------------------------------------------------------- bucle
