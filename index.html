@@ -29,6 +29,9 @@
 <main>
   <section class="vista" id="v-inicio" aria-label="Portada">
     <div id="hero">
+      <div class="eco" id="eco-izq" aria-hidden="true"><img src="img/portada_atardecer_ps_v1.jpg" alt=""></div>
+      <div class="eco" id="eco-der" aria-hidden="true"><img src="img/portada_atardecer_ps_v1.jpg" alt=""></div>
+      <div class="eco" id="eco-sup" aria-hidden="true"><img src="img/portada_atardecer_ps_v1.jpg" alt=""></div>
       <div id="escena">
         <img src="img/portada_atardecer_ps_v1.jpg" alt="El pabellón del comedor y el estar, de vidrio, encendido al atardecer" fetchpriority="high">
         <h1 id="letra"><span id="letra-t">Casa <br><span class="par-w">W</span>uehrer</span></h1>
@@ -121,22 +124,44 @@
 <script>
 // ---------- portada: la letra se coloca sobre la casa. Las medidas las escribe construir_rediseno.py desde el render ----------
 const IM = {"w": 2000, "h": 1903, "techo": 0.2733, "puerta": [0.605, 0.515], "libre": [0.135, 0.795]};
-const $ = id => document.getElementById(id), esc = $('escena'), let_ = $('letra'), tx = $('letra-t'), hero = $('hero'), pin = $('pin'), inicio = $('v-inicio');
+const $ = id => document.getElementById(id), esc = $('escena'), let_ = $('letra'), tx = $('letra-t'), hero = $('hero'), pin = $('pin'), inicio = $('v-inicio'), velo = hero.querySelector('.velo');
+// Pipe, 9-nov-2026: «La casa queda cortada en la pagina». El encuadre ya no llena la ventana a costa de la casa: la escala sale de lo que debe verse entero
+// (el nombre, la cubierta, la base de la casa, y las tarjetas debajo). Lo que falte a los lados o arriba lo cubren franjas del borde de la misma imagen, reflejadas y desenfocadas, que nunca incluyen la casa.
+const CASA = { x: [.146, .921], base: .668 }, BORDE = { izq: .13, der: .075, sup: .2 };
+function eco(el, r, img) { el.style.cssText = r ? `left:${r.l}px;top:${r.t}px;width:${r.w}px;height:${r.h}px` : 'display:none'; if (r) img.style.cssText = `left:${r.il}px;top:${r.it}px;width:${r.iw}px;height:${r.ih}px;transform:${r.tr}`; }
 function componer() {
   const vw = hero.clientWidth, vh = hero.clientHeight; if (!vw || !vh) return;
-  const s = Math.max(vw / IM.w, vh / IM.h), W = IM.w * s, H = IM.h * s, movil = vw <= 820, sobra = H - vh, top = -Math.min(sobra, (movil ? 0 : 0.012) * H), techoV = top + IM.techo * H, navB = movil ? 74 : 72, x0 = (vw - W) / 2;
-  esc.style.cssText = `left:${x0}px;top:${top}px;width:${W}px;height:${H}px`;
+  const vertical = vw <= 820 && vh >= vw, bajo = vh <= 500 && vw > vh;
+  hero.classList.toggle('vertical', vertical); hero.classList.toggle('bajo', bajo);
   let_.style.fontSize = '100px';
-  const zona = movil ? [vw * .035, vw * .965] : [Math.max(20, x0 + IM.libre[0] * W), Math.min(vw - 20, x0 + IM.libre[1] * W)], meta = zona[1] - zona[0], lineas = movil ? 2 : 1, t100 = tx.getBoundingClientRect().width || 300;
-  const fs = Math.min(100 * meta / t100, (techoV - navB) / (.74 + (lineas - 1) * .92));
+  const t100 = tx.getBoundingClientRect().width || 530, lineas = vertical ? 2 : 1, A = IM.w / IM.h, altoCasa = CASA.base - IM.techo, anchoLibre = IM.libre[1] - IM.libre[0];
+  const navB = bajo ? 10 : vertical ? 74 : 72, res = Math.max(...[...hero.querySelectorAll('.tarj')].filter(c => c.offsetWidth).map(c => parseFloat(getComputedStyle(c).bottom) + c.offsetHeight), 0) + (bajo ? 6 : 14);
+  const orilla = Math.max(14, vw * .03), fsVert = 100 * (vw * .93) / t100, altoLetra = fs => fs * (.74 + (lineas - 1) * .92);
+  const hAlto = vertical ? (vh - navB - res - altoLetra(fsVert)) / altoCasa : (vh - navB - res) / (altoCasa + altoLetra(100 * anchoLibre * A / t100)), hAncho = (vw - 2 * orilla) / (CASA.x[1] - CASA.x[0]) / A;
+  const H = Math.max(160, Math.min(hAlto, hAncho)), W = H * A, x0 = vw / 2 - (CASA.x[0] + CASA.x[1]) / 2 * W;
+  const zona = vertical ? [vw * .035, Math.min(vw * .965, x0 + IM.libre[1] * W)] : [Math.max(20, x0 + IM.libre[0] * W), Math.min(vw - (bajo ? 130 : 20), x0 + IM.libre[1] * W)], meta = zona[1] - zona[0], fs = 100 * meta / t100, letra = altoLetra(fs);
+  const holgura = Math.max(0, vh - res - navB - letra - altoCasa * H), techoV = navB + letra + holgura * (vertical ? .3 : .35), top = techoV - IM.techo * H, baseV = top + CASA.base * H;
+  const hueco = 1, gIzq = x0 > hueco ? x0 : 0, gDer = vw - x0 - W > hueco ? vw - x0 - W : 0, gSup = top > hueco ? top : 0, fL = Math.min(130, W * .1), fT = Math.min(70, H * .06);
+  const mascara = gSup ? `linear-gradient(180deg, transparent, #000 ${fT}px)` : (gIzq || gDer) ? `linear-gradient(90deg, transparent, #000 ${gIzq ? fL : 0}px, #000 calc(100% - ${gDer ? fL : 0}px), transparent)` : 'none';
+  esc.style.cssText = `left:${x0}px;top:${top}px;width:${W}px;height:${H}px`;
+  esc.querySelectorAll('img').forEach(i => { i.style.webkitMaskImage = mascara; i.style.maskImage = mascara; });   // solo a las imagenes: el nombre no se desvanece
   let_.style.fontSize = fs + 'px'; let_.style.left = (zona[0] - x0) + 'px'; let_.style.width = meta + 'px';
   let_.style.top = (IM.techo * H + fs * .035 - fs * .83 - fs * .92 * (lineas - 1)) + 'px';
   pin.style.left = (x0 + IM.puerta[0] * W) + 'px'; pin.style.top = (top + IM.puerta[1] * H) + 'px';
+  // franjas: cada una estira solo el borde sin casa, reflejado para que empate con la imagen
+  const izq = gIzq && gIzq + fL, der = gDer && gDer + fL, sup = gSup && gSup + fT, cas = q => hero.querySelector(q), altoSup = Math.max(H, sup / BORDE.sup);
+  eco($('eco-izq'), izq && { l: 0, t: top, w: izq, h: H, il: 0, it: 0, iw: izq / BORDE.izq, ih: H, tr: `translateX(${izq}px) scaleX(-1)` }, cas('#eco-izq img'));
+  eco($('eco-der'), der && { l: vw - der, t: top, w: der, h: H, il: 0, it: 0, iw: der / BORDE.der, ih: H, tr: `translateX(${der / BORDE.der}px) scaleX(-1)` }, cas('#eco-der img'));
+  eco($('eco-sup'), sup && { l: x0, t: 0, w: W, h: sup, il: 0, it: 0, iw: W, ih: altoSup, tr: `translateY(${sup}px) scaleY(-1)` }, cas('#eco-sup img'));
+  // el velo oscurece solo lo que queda debajo de la casa, y la imagen nunca termina a la vista
+  const corta = top + H < vh - 1 || vertical;
+  velo.style.cssText = corta ? `inset:${baseV + 6}px 0 0 0;height:auto;background:linear-gradient(180deg, rgba(11,11,14,0), #0B0B0E ${Math.min(90, Math.max(30, top + H - baseV - 10))}px)` : `height:${Math.ceil(vh - baseV)}px`;
+  hero.dataset.casa = JSON.stringify({ izq: Math.round(x0 + CASA.x[0] * W), der: Math.round(x0 + CASA.x[1] * W), techo: Math.round(techoV), base: Math.round(baseV), tarjetas: Math.round(vh - res + (bajo ? 6 : 14)), H: Math.round(H), W: Math.round(W) });
 }
 new ResizeObserver(componer).observe(hero); document.fonts.ready.then(componer);
 const quieta = matchMedia('(prefers-reduced-motion:reduce)').matches;
-if (!quieta) inicio.addEventListener('scroll', () => { let_.style.transform = `translateY(${inicio.scrollTop * .22}px)`; document.body.classList.toggle('bajado', inicio.scrollTop > 60); }, { passive: true });
-else inicio.addEventListener('scroll', () => document.body.classList.toggle('bajado', inicio.scrollTop > 60), { passive: true });
+// el nombre acompana a la casa al bajar: antes se movia aparte y se escondia detras de la cubierta
+inicio.addEventListener('scroll', () => document.body.classList.toggle('bajado', inicio.scrollTop > 60), { passive: true });
 
 // ---------- navegacion por #/modulo: la misma del visor original (el boton atras del navegador funciona) ----------
 const MODULOS = ['inicio', '3d', '360', 'planos', 'axo', 'productos'];

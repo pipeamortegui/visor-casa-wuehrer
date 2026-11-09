@@ -194,9 +194,21 @@ function ponerSol(v) {           // 0..100: de la mañana (este) a la tarde (oes
 }
 ponerSol(38);
 
+const ORB = { min: 6, max: 100 };   // metros de la camara al punto de giro: mas cerca se entra a los muros (adentro es A pie); mas lejos se ve el borde del terreno
 const orbita = new OrbitControls(camara, lienzo);
-orbita.target.copy(CENTRO); orbita.enableDamping = true; orbita.maxPolarAngle = Math.PI * 0.495; orbita.update();
+orbita.target.copy(CENTRO); orbita.enableDamping = true; orbita.maxPolarAngle = Math.PI * 0.495; orbita.minDistance = ORB.min; orbita.maxDistance = ORB.max; orbita.update();
 const pie = new PointerLockControls(camara, document.body);
+const acotar = (v, a, b) => Math.max(a, Math.min(b, v));
+function ajustarCerca() { const n = acotar(camara.position.distanceTo(orbita.target) * .01, .1, 2); if (Math.abs(n - camara.near) > .004) { camara.near = n; camara.updateProjectionMatrix(); } }
+// OrbitControls ignora la rueda mientras un boton esta apretado: aqui se atiende ese caso, con la misma escala y los mismos topes
+let orbitando = false, tAvisoCerca = -1e9; lienzo.addEventListener('pointerdown', () => { orbitando = true; }); for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => { orbitando = false; });
+lienzo.addEventListener('wheel', e => {
+  if (modo !== 'orbita' && !IW.modoAxo) return;
+  if (orbitando) { e.preventDefault(); const k = Math.pow(.95, Math.abs(e.deltaY) * .01), f = e.deltaY < 0 ? k : 1 / k;
+    if (IW.modoAxo) { camAxo.zoom = acotar(camAxo.zoom / f, orbitaAxo.minZoom, orbitaAxo.maxZoom); camAxo.updateProjectionMatrix(); }
+    else { const v = camara.position.clone().sub(orbita.target), d = acotar(v.length() * f, ORB.min, ORB.max); camara.position.copy(orbita.target).addScaledVector(v.normalize(), d); } }
+  else if (!IW.modoAxo && e.deltaY < 0 && camara.position.distanceTo(orbita.target) <= ORB.min + .2 && performance.now() - tAvisoCerca > 20000) { tAvisoCerca = performance.now(); aviso('Para entrar a la casa, usa A pie.', 4000); }
+}, { passive: false });
 Object.assign(IW, { renderer, scene, camara, orbita });
 IW.medir = (n = 30) => {           // tiempo de render sin depender del requestAnimationFrame (el panel oculto lo frena)
   const gl = renderer.getContext(); renderer.render(scene, camActiva); gl.finish();
@@ -559,7 +571,7 @@ IW.cajaDe = (nombre) => {            // caja (Max: x, y, z) de un objeto por nom
 const reloj = new THREE.Clock(); let cuadros = 0, tVent = performance.now(), msAcum = 0;
 function bucle() {
   const dt = Math.min(reloj.getDelta(), 0.1); const ta = performance.now();
-  if (IW.modoAxo) { IW.orbitaAxo.update(); if (maqueta) opacidadAristas(); } else if (modo === 'orbita') orbita.update(); else mover(dt);
+  if (IW.modoAxo) { IW.orbitaAxo.update(); if (maqueta) opacidadAristas(); } else if (modo === 'orbita') { orbita.update(); ajustarCerca(); } else mover(dt);
   if (miniPend && !IW.modoAxo) pintarMiniaturas();
   renderer.render(scene, camActiva);
   dibujarPlanta();
@@ -575,7 +587,7 @@ function bucle() {
   }
   requestAnimationFrame(bucle);
 }
-IW.cuadro = () => { if (IW.modoAxo) { IW.orbitaAxo.update(); if (maqueta) opacidadAristas(); } else if (modo === 'orbita') orbita.update(); renderer.render(scene, camActiva); dibujarPlanta(); };
+IW.cuadro = () => { if (IW.modoAxo) { IW.orbitaAxo.update(); if (maqueta) opacidadAristas(); } else if (modo === 'orbita') { orbita.update(); ajustarCerca(); } renderer.render(scene, camActiva); dibujarPlanta(); };
 addEventListener('resize', () => { camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); if (IW.modoAxo) IW.encuadrarAxo(); });
 
 // ---------------------------------------------------------------- Visor VIRTU: escenas, noche, panel y estado compartido

@@ -121,11 +121,21 @@ function ponerLamina(i) {
 
 // ---------------------------------------------------------------- dibujo por mosaicos
 function tamNivel(n) { let w = lamina.ancho, h = lamina.alto; for (let k = 0; k < n; k++) { w = Math.ceil(w / 2); h = Math.ceil(h / 2); } return [w, h]; }
+const PAQUETES = new Map(); const MAXPAQ = 14;   // cada nivel de lamina es un archivo: [largo del indice][indice JSON {col_fila: [desde, largo]}][imagenes]
+function paquete(u) {
+  let p = PAQUETES.get(u); if (p) { PAQUETES.delete(u); PAQUETES.set(u, p); return p; }
+  p = { indice: null }; PAQUETES.set(u, p); if (PAQUETES.size > MAXPAQ) PAQUETES.delete(PAQUETES.keys().next().value);
+  pedidos++; fetch(u).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(b => { const L = new DataView(b).getUint32(0, true); p.indice = JSON.parse(new TextDecoder().decode(new Uint8Array(b, 4, L))); p.datos = b; p.base = 4 + L; }).catch(() => {}).finally(() => { pedidos--; pedir(); });
+  return p;
+}
 function tesela(n, c, f) {
-  const k = lamina.carpeta + n + '/' + c + '_' + f + '.webp';
+  const k = lamina.carpeta + n + '/' + c + '_' + f;
   let t = cache.get(k);
   if (t) { cache.delete(k); cache.set(k, t); return t.complete && t.naturalWidth ? t : null; }
-  t = new Image(); pedidos++; t.onload = t.onerror = () => { pedidos--; pedir(); }; t.src = k; cache.set(k, t);
+  const p = paquete(lamina.carpeta + n + '.bin'); if (!p.indice) return null;
+  const e = p.indice[c + '_' + f]; if (!e) return null;
+  const url = URL.createObjectURL(new Blob([new Uint8Array(p.datos, p.base + e[0], e[1])], { type: 'image/webp' }));
+  t = new Image(); pedidos++; t.onload = t.onerror = () => { URL.revokeObjectURL(url); pedidos--; pedir(); }; t.src = url; cache.set(k, t);
   if (cache.size > MAXCACHE) cache.delete(cache.keys().next().value);
   return null;
 }
