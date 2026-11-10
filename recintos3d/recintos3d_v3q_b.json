@@ -1,0 +1,979 @@
+{
+ "proyecto": "PRB-0002",
+ "generado_por": "fichas/interactivo/visor_virtu_v1/preparar_burbujas_recintos.py",
+ "version": "v3q_b",
+ "ficha": "fichas/casa_v1/casa_v3.yaml",
+ "ficha_md5": "544f769ffd6f90c8bd23a9f060ad1995",
+ "central": "PRB-0002_v3q",
+ "colision_md5": "6ffcdfaa79f835eb04b584f4be1b0824",
+ "ojo_m": 1.6,
+ "ejes": "x este, y norte (m de Max); az: 0 norte, 90 este",
+ "burbujas": [
+  {
+   "id": "R01b",
+   "recinto": "R01",
+   "nombre": "Comedor",
+   "nombre_ficha": "estar-comedor-cocina · comedor",
+   "exterior": false,
+   "x": 4.45,
+   "y": 1.25,
+   "piso": 0.0,
+   "az": 350,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 350,
+     "frente": 13.32,
+     "min": 0.96
+    },
+    "rect_m": [
+     0.152,
+     0.152,
+     7.529,
+     10.516
+    ],
+    "objetivo": [
+     4.5,
+     1.3
+    ],
+    "corrido_m": 0.07,
+    "holgura_m": 0.89,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 9.65,
+    "obstaculo_m": {
+     "n": 33.75,
+     "e": 3.15,
+     "s": 3.6,
+     "o": 3.4
+    },
+    "borde_ficha_m": {
+     "n": 9.27,
+     "e": 3.08,
+     "s": 1.1,
+     "o": 4.3
+    }
+   }
+  },
+  {
+   "id": "R01a",
+   "recinto": "R01",
+   "nombre": "Cocina",
+   "nombre_ficha": "estar-comedor-cocina · cocina",
+   "exterior": false,
+   "x": 6.85,
+   "y": 3.55,
+   "piso": 0.0,
+   "az": 270,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 270,
+     "frente": 13.32,
+     "min": 0.79
+    },
+    "rect_m": [
+     0.152,
+     0.152,
+     7.529,
+     10.516
+    ],
+    "objetivo": [
+     6.9,
+     3.6
+    ],
+    "corrido_m": 0.07,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 3.55,
+    "obstaculo_m": {
+     "n": 3.35,
+     "e": 0.45,
+     "s": 3.3,
+     "o": 0.5
+    },
+    "borde_ficha_m": {
+     "n": 6.97,
+     "e": 0.68,
+     "s": 3.4,
+     "o": 6.7
+    }
+   }
+  },
+  {
+   "id": "R01c",
+   "recinto": "R01",
+   "nombre": "Estar",
+   "nombre_ficha": "estar-comedor-cocina · estar",
+   "exterior": false,
+   "x": 2.65,
+   "y": 6.85,
+   "piso": 0.0,
+   "az": 250,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 250,
+     "frente": 13.32,
+     "min": 2.6
+    },
+    "rect_m": [
+     0.152,
+     0.152,
+     7.529,
+     10.516
+    ],
+    "objetivo": [
+     2.7,
+     6.9
+    ],
+    "corrido_m": 0.07,
+    "holgura_m": 0.58,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 7.45,
+    "obstaculo_m": {
+     "n": 2.25,
+     "e": 2.85,
+     "s": 2.2,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 3.67,
+     "e": 4.88,
+     "s": 6.7,
+     "o": 2.5
+    }
+   }
+  },
+  {
+   "id": "R02a",
+   "recinto": "R02",
+   "nombre": "Despensa",
+   "nombre_ficha": "despensa y aseo · despensa",
+   "exterior": false,
+   "x": 6.05,
+   "y": 7.25,
+   "piso": 0.0,
+   "az": 300,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 300,
+     "frente": 0.57,
+     "min": 0.27
+    },
+    "rect_m": [
+     5.38,
+     7.01,
+     7.529,
+     7.742
+    ],
+    "objetivo": [
+     6.454,
+     7.376
+    ],
+    "corrido_m": 0.42,
+    "holgura_m": 0.3,
+    "holgura_pedida": 0.25,
+    "piso_mediana": 0.0,
+    "visual_m": 0.55,
+    "obstaculo_m": {
+     "n": 0.25,
+     "e": 0.25,
+     "s": 0.3,
+     "o": 0.5
+    },
+    "borde_ficha_m": {
+     "n": 0.49,
+     "e": 1.48,
+     "s": 0.24,
+     "o": 0.67
+    }
+   }
+  },
+  {
+   "id": "R02b",
+   "recinto": "R02",
+   "nombre": "Aseo",
+   "nombre_ficha": "despensa y aseo · aseo",
+   "exterior": false,
+   "x": 6.65,
+   "y": 8.65,
+   "piso": 0.0,
+   "az": 10,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 10,
+     "frente": 3.09,
+     "min": 0.42
+    },
+    "rect_m": [
+     5.38,
+     7.803,
+     7.529,
+     9.053
+    ],
+    "objetivo": [
+     6.454,
+     8.428
+    ],
+    "corrido_m": 0.3,
+    "holgura_m": 0.4,
+    "holgura_pedida": 0.35,
+    "piso_mediana": 0.0,
+    "visual_m": 1.15,
+    "obstaculo_m": {
+     "n": 0.35,
+     "e": 0.75,
+     "s": 0.8,
+     "o": 0.4
+    },
+    "borde_ficha_m": {
+     "n": 0.4,
+     "e": 0.88,
+     "s": 0.85,
+     "o": 1.27
+    }
+   }
+  },
+  {
+   "id": "R02c",
+   "recinto": "R02",
+   "nombre": "Lavandería",
+   "nombre_ficha": "despensa y aseo · lavanderia",
+   "exterior": false,
+   "x": 6.85,
+   "y": 9.85,
+   "piso": 0.0,
+   "az": 340,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 340,
+     "frente": 3.15,
+     "min": 0.68
+    },
+    "rect_m": [
+     5.38,
+     9.174,
+     7.529,
+     10.546
+    ],
+    "objetivo": [
+     6.454,
+     9.86
+    ],
+    "corrido_m": 0.4,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 1.2,
+    "obstaculo_m": {
+     "n": 5.3,
+     "e": 0.65,
+     "s": 1.55,
+     "o": 0.5
+    },
+    "borde_ficha_m": {
+     "n": 0.7,
+     "e": 0.68,
+     "s": 0.68,
+     "o": 1.47
+    }
+   }
+  },
+  {
+   "id": "R03",
+   "recinto": "R03",
+   "nombre": "Patio de entrada",
+   "nombre_ficha": "patio de entrada",
+   "exterior": true,
+   "x": 1.95,
+   "y": 12.95,
+   "piso": -0.152,
+   "az": 300,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 300,
+     "frente": 6.6,
+     "min": 2.1
+    },
+    "rect_m": [
+     0.0,
+     10.668,
+     3.886,
+     15.24
+    ],
+    "objetivo": [
+     1.943,
+     12.954
+    ],
+    "corrido_m": 0.01,
+    "holgura_m": 1.9,
+    "holgura_pedida": 0.45,
+    "piso_mediana": -0.152,
+    "visual_m": 3.2,
+    "obstaculo_m": {
+     "n": 2.25,
+     "e": 1.85,
+     "s": 2.3,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 2.29,
+     "e": 1.94,
+     "s": 2.28,
+     "o": 1.95
+    }
+   }
+  },
+  {
+   "id": "R13",
+   "recinto": "R13",
+   "nombre": "Vestíbulo de entrada",
+   "nombre_ficha": "vestibulo de entrada",
+   "exterior": false,
+   "x": 6.45,
+   "y": 12.95,
+   "piso": 0.0,
+   "az": 100,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 100,
+     "frente": 5.62,
+     "min": 1.45
+    },
+    "rect_m": [
+     5.38,
+     10.668,
+     7.529,
+     15.21
+    ],
+    "objetivo": [
+     6.454,
+     12.939
+    ],
+    "corrido_m": 0.01,
+    "holgura_m": 1.2,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 2.75,
+    "obstaculo_m": {
+     "n": 2.15,
+     "e": 1.15,
+     "s": 3.7,
+     "o": 2.6
+    },
+    "borde_ficha_m": {
+     "n": 2.26,
+     "e": 1.08,
+     "s": 2.28,
+     "o": 1.07
+    }
+   }
+  },
+  {
+   "id": "R09",
+   "recinto": "R09",
+   "nombre": "Cuarto técnico",
+   "nombre_ficha": "cuarto tecnico",
+   "exterior": false,
+   "x": 6.55,
+   "y": 16.75,
+   "piso": 0.0,
+   "az": 30,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 30,
+     "frente": 1.77,
+     "min": 0.92
+    },
+    "rect_m": [
+     5.517,
+     15.362,
+     7.529,
+     18.227
+    ],
+    "objetivo": [
+     6.523,
+     16.794
+    ],
+    "corrido_m": 0.05,
+    "holgura_m": 0.9,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 2.0,
+    "obstaculo_m": {
+     "n": 1.45,
+     "e": 0.85,
+     "s": 1.3,
+     "o": 1.0
+    },
+    "borde_ficha_m": {
+     "n": 1.48,
+     "e": 0.98,
+     "s": 1.39,
+     "o": 1.03
+    }
+   }
+  },
+  {
+   "id": "R05",
+   "recinto": "R05",
+   "nombre": "Estudio / cuarto de huéspedes",
+   "nombre_ficha": "estudio / cuarto de huespedes",
+   "exterior": false,
+   "x": 1.95,
+   "y": 17.75,
+   "piso": 0.0,
+   "az": 190,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 190,
+     "frente": 6.35,
+     "min": 1.91
+    },
+    "rect_m": [
+     0.152,
+     15.392,
+     3.84,
+     19.797
+    ],
+    "objetivo": [
+     1.996,
+     17.595
+    ],
+    "corrido_m": 0.16,
+    "holgura_m": 0.51,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 3.0,
+    "obstaculo_m": {
+     "n": 1.75,
+     "e": 1.85,
+     "s": 0.6,
+     "o": 1.9
+    },
+    "borde_ficha_m": {
+     "n": 2.05,
+     "e": 1.89,
+     "s": 2.36,
+     "o": 1.8
+    }
+   }
+  },
+  {
+   "id": "R14",
+   "recinto": "R14",
+   "nombre": "Antebaño 1 y closet",
+   "nombre_ficha": "antebano 1 y closet",
+   "exterior": false,
+   "x": 6.55,
+   "y": 18.95,
+   "piso": 0.0,
+   "az": 260,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 260,
+     "frente": 2.69,
+     "min": 0.46
+    },
+    "rect_m": [
+     5.517,
+     18.349,
+     7.529,
+     19.797
+    ],
+    "objetivo": [
+     6.523,
+     19.073
+    ],
+    "corrido_m": 0.13,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 1.45,
+    "obstaculo_m": {
+     "n": 0.45,
+     "e": 0.85,
+     "s": 0.6,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 0.85,
+     "e": 0.98,
+     "s": 0.6,
+     "o": 1.03
+    }
+   }
+  },
+  {
+   "id": "R04",
+   "recinto": "R04",
+   "nombre": "Pasillo",
+   "nombre_ficha": "pasillo",
+   "exterior": false,
+   "x": 4.65,
+   "y": 19.85,
+   "piso": 0.0,
+   "az": 0,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 0,
+     "frente": 18.96,
+     "min": 0.65
+    },
+    "rect_m": [
+     3.978,
+     10.668,
+     5.38,
+     28.971
+    ],
+    "objetivo": [
+     4.679,
+     19.82
+    ],
+    "corrido_m": 0.04,
+    "holgura_m": 0.7,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 9.5,
+    "obstaculo_m": {
+     "n": 15.15,
+     "e": 0.65,
+     "s": 22.15,
+     "o": 0.7
+    },
+    "borde_ficha_m": {
+     "n": 9.12,
+     "e": 0.73,
+     "s": 9.18,
+     "o": 0.67
+    }
+   }
+  },
+  {
+   "id": "R10",
+   "recinto": "R10",
+   "nombre": "Baño 1",
+   "nombre_ficha": "bano 1",
+   "exterior": false,
+   "x": 6.75,
+   "y": 21.35,
+   "piso": 0.0,
+   "az": 330,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 330,
+     "frente": 1.66,
+     "min": 0.74
+    },
+    "rect_m": [
+     5.486,
+     19.919,
+     7.529,
+     22.799
+    ],
+    "objetivo": [
+     6.507,
+     21.359
+    ],
+    "corrido_m": 0.24,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 1.9,
+    "obstaculo_m": {
+     "n": 2.85,
+     "e": 0.65,
+     "s": 0.5,
+     "o": 0.6
+    },
+    "borde_ficha_m": {
+     "n": 1.45,
+     "e": 0.78,
+     "s": 1.43,
+     "o": 1.26
+    }
+   }
+  },
+  {
+   "id": "R06",
+   "recinto": "R06",
+   "nombre": "Dormitorio 2",
+   "nombre_ficha": "dormitorio 2",
+   "exterior": false,
+   "x": 1.95,
+   "y": 23.05,
+   "piso": 0.0,
+   "az": 230,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 230,
+     "frente": 6.38,
+     "min": 0.82
+    },
+    "rect_m": [
+     0.152,
+     19.919,
+     3.84,
+     24.369
+    ],
+    "objetivo": [
+     1.996,
+     22.144
+    ],
+    "corrido_m": 0.91,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 2.45,
+    "obstaculo_m": {
+     "n": 0.8,
+     "e": 1.85,
+     "s": 0.45,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 1.32,
+     "e": 1.89,
+     "s": 3.13,
+     "o": 1.8
+    }
+   }
+  },
+  {
+   "id": "R15",
+   "recinto": "R15",
+   "nombre": "Antebaño 2 y closet",
+   "nombre_ficha": "antebano 2 y closet",
+   "exterior": false,
+   "x": 6.55,
+   "y": 23.45,
+   "piso": 0.0,
+   "az": 260,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 260,
+     "frente": 2.68,
+     "min": 0.53
+    },
+    "rect_m": [
+     5.486,
+     22.951,
+     7.529,
+     24.369
+    ],
+    "objetivo": [
+     6.507,
+     23.66
+    ],
+    "corrido_m": 0.21,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 1.5,
+    "obstaculo_m": {
+     "n": 0.45,
+     "e": 0.85,
+     "s": 0.5,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 0.92,
+     "e": 0.98,
+     "s": 0.5,
+     "o": 1.06
+    }
+   }
+  },
+  {
+   "id": "R11",
+   "recinto": "R11",
+   "nombre": "Baño 2",
+   "nombre_ficha": "bano 2",
+   "exterior": false,
+   "x": 6.75,
+   "y": 26.05,
+   "piso": 0.0,
+   "az": 210,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 210,
+     "frente": 1.73,
+     "min": 0.75
+    },
+    "rect_m": [
+     5.486,
+     24.475,
+     7.529,
+     27.402
+    ],
+    "objetivo": [
+     6.507,
+     25.938
+    ],
+    "corrido_m": 0.27,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 1.8,
+    "obstaculo_m": {
+     "n": 2.9,
+     "e": 0.65,
+     "s": 0.6,
+     "o": 0.45
+    },
+    "borde_ficha_m": {
+     "n": 1.35,
+     "e": 0.78,
+     "s": 1.57,
+     "o": 1.26
+    }
+   }
+  },
+  {
+   "id": "R07",
+   "recinto": "R07",
+   "nombre": "Dormitorio 3",
+   "nombre_ficha": "dormitorio 3",
+   "exterior": false,
+   "x": 1.95,
+   "y": 27.65,
+   "piso": 0.0,
+   "az": 230,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 230,
+     "frente": 6.4,
+     "min": 0.85
+    },
+    "rect_m": [
+     0.152,
+     24.491,
+     3.84,
+     28.971
+    ],
+    "objetivo": [
+     1.996,
+     26.731
+    ],
+    "corrido_m": 0.92,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 2.45,
+    "obstaculo_m": {
+     "n": 0.75,
+     "e": 1.85,
+     "s": 0.5,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 1.32,
+     "e": 1.89,
+     "s": 3.16,
+     "o": 1.8
+    }
+   }
+  },
+  {
+   "id": "R16",
+   "recinto": "R16",
+   "nombre": "Antebaño 3 y closet",
+   "nombre_ficha": "antebano 3 y closet",
+   "exterior": false,
+   "x": 6.55,
+   "y": 28.05,
+   "piso": 0.0,
+   "az": 260,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 260,
+     "frente": 2.67,
+     "min": 0.53
+    },
+    "rect_m": [
+     5.486,
+     27.523,
+     7.529,
+     28.971
+    ],
+    "objetivo": [
+     6.507,
+     28.247
+    ],
+    "corrido_m": 0.2,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 1.5,
+    "obstaculo_m": {
+     "n": 0.45,
+     "e": 0.85,
+     "s": 0.45,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 0.92,
+     "e": 0.98,
+     "s": 0.53,
+     "o": 1.06
+    }
+   }
+  },
+  {
+   "id": "R12",
+   "recinto": "R12",
+   "nombre": "Baño principal",
+   "nombre_ficha": "bano principal",
+   "exterior": false,
+   "x": 6.65,
+   "y": 31.25,
+   "piso": 0.0,
+   "az": 10,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 10,
+     "frente": 5.42,
+     "min": 0.98
+    },
+    "rect_m": [
+     5.486,
+     29.066,
+     7.529,
+     33.437
+    ],
+    "objetivo": [
+     6.507,
+     31.251
+    ],
+    "corrido_m": 0.14,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 2.6,
+    "obstaculo_m": {
+     "n": 1.4,
+     "e": 0.75,
+     "s": 1.15,
+     "o": 0.5
+    },
+    "borde_ficha_m": {
+     "n": 2.19,
+     "e": 0.88,
+     "s": 2.18,
+     "o": 1.16
+    }
+   }
+  },
+  {
+   "id": "R08",
+   "recinto": "R08",
+   "nombre": "Suite principal",
+   "nombre_ficha": "suite principal",
+   "exterior": false,
+   "x": 2.75,
+   "y": 32.35,
+   "piso": -0.033,
+   "az": 230,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 230,
+     "frente": 8.42,
+     "min": 0.89
+    },
+    "rect_m": [
+     0.152,
+     29.078,
+     5.38,
+     34.9
+    ],
+    "objetivo": [
+     2.766,
+     31.989
+    ],
+    "corrido_m": 0.36,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 3.6,
+    "obstaculo_m": {
+     "n": 0.75,
+     "e": 2.6,
+     "s": 0.5,
+     "o": 40.05
+    },
+    "borde_ficha_m": {
+     "n": 2.55,
+     "e": 2.63,
+     "s": 3.27,
+     "o": 2.6
+    }
+   }
+  },
+  {
+   "id": "R17",
+   "recinto": "R17",
+   "nombre": "Vestidor de la suite",
+   "nombre_ficha": "vestidor de la suite",
+   "exterior": false,
+   "x": 6.35,
+   "y": 34.05,
+   "piso": 0.0,
+   "az": 50,
+   "control": {
+    "mirada": {
+     "fuente": "geometria",
+     "az": 50,
+     "frente": 3.2,
+     "min": 0.46
+    },
+    "rect_m": [
+     5.38,
+     33.437,
+     7.529,
+     34.9
+    ],
+    "objetivo": [
+     6.454,
+     34.168
+    ],
+    "corrido_m": 0.16,
+    "holgura_m": 0.5,
+    "holgura_pedida": 0.45,
+    "piso_mediana": 0.0,
+    "visual_m": 1.5,
+    "obstaculo_m": {
+     "n": 0.95,
+     "e": 1.25,
+     "s": 0.5,
+     "o": 6.3
+    },
+    "borde_ficha_m": {
+     "n": 0.85,
+     "e": 1.18,
+     "s": 0.61,
+     "o": 0.97
+    }
+   }
+  }
+ ]
+}
